@@ -129,6 +129,8 @@ Parametr ten służy głównie do wykrywania awarii serwera głównego, jednak j
 
 - jeśli kworum jest ustawione na wartość większą niż większość Sentineli, zmniejsza się czułość, jednak zwiększa gwarancja i pewność, że decyzja o niedostępności jest bardziej miarodajna i właściwa. Pozwala to na zminimalizowanie przypadkowego przełączania. W ten sposób system aktywuje się tylko wtedy, gdy problem rzeczywiście dotyczy węzła głównego, a nie problemu z siecią.
 
+Przy określaniu wartości kworum powinieneś pamiętać o danym środowisku i infrastrukturze. Na przykład mając cztery Redis Sentinele, które rezydują w dwóch rozdzielonych centrach danych ustawienie kworum na trzy przy awarii jednego z DC, może okazać się problematyczne, ponieważ nie uda się przeprowadzić przełączania awaryjnego w przypadku kiedy działać będą tylko dwa z czterech wartowników (wymagany jest jeszcze jeden dodatkowy aby zachować kworum).
+
 Zawsze, gdy kworum jest osiągnięte, większość wszystkich znanych węzłów Sentinel musi być dostępna i osiągalna, aby wybór lidera był możliwy. Następnie lider podejmie wszystkie decyzje dotyczące przywrócenia dostępności usługi w tym:
 
 - wybierze nowego mistrza
