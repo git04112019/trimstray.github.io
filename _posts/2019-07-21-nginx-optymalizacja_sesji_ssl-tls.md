@@ -27,7 +27,7 @@ Włączenie buforowania sesji pomaga zmniejszyć obciążenie procesora oraz zwi
 
 Oczywiście nie ma róży bez kolców. Jednym z powodów, dla których nie należy używać bardzo dużej pamięci podręcznej, jest to, że większość implementacji nie usuwa z niej żadnych rekordów. Nawet wygasłe sesje mogą nadal się w niej znajdować i można je odzyskać!
 
-Przykład:
+Przykład konfiguracji:
 
 ```nginx
 # context: http, server
@@ -39,7 +39,7 @@ Oficjalna dokumentacja: [ssl_session_cache](http://nginx.org/en/docs/http/ngx_ht
 
 ## ssl_session_timeout
 
-Zgodnie z [RFC 5077 - Ticket Lifetime](https://tools.ietf.org/html/rfc5077#section-5.6) <sup>[IETF]</sup>, sesje nie powinny być utrzymywane dłużej niż 24 godziny (jest to maksymalny czas dla sesji SSL/TLS). Jakiś czas temu znalazłem rekomendację, aby dyrektywa ta miała jeszcze mniejszą, wręcz bardzo niską wartość ustawioną na ok. 15 minut (co ciekawe, dokumentacja serwera NGINX ustawią wartość domyślną na 5 minut). Ma to zapobiegać nadużyciom przez reklamodawców (trackerów) takich jak Google i Facebook. Nigdy nie stosowałem tak niskich wartości, jednak myślę, że w jakiś sposób może to mieć sens.
+Zgodnie z [RFC 5077 - Ticket Lifetime](https://tools.ietf.org/html/rfc5077#section-5.6) <sup>[IETF]</sup>, sesje nie powinny być utrzymywane dłużej niż 24 godziny (jest to maksymalny czas dla sesji SSL/TLS). Jakiś czas temu znalazłem rekomendację, aby dyrektywa ta miała jeszcze mniejszą, wręcz bardzo niską wartość ustawioną na ok. 15 minut (co ciekawe, dokumentacja serwera NGINX ustawia wartość domyślną na 5 minut). Ma to zapobiegać nadużyciom przez reklamodawców (trackerów) takich jak Google i Facebook. Nigdy nie stosowałem tak niskich wartości, jednak myślę, że w jakiś sposób może to mieć sens.
 
 Jeśli stosujemy szyfry wykorzystujące utajnianie z wyprzedzeniem, musimy upewnić się, że okres ważności parametrów sesji nie jest zbyt długi, ponieważ ewentualna kradzież zawartości pamięci podręcznej pozwala odszyfrować wszystkie sesje, których parametry są w niej zawarte. Jeśli sesje będą przechowywane przez 24h, osoba atakująca może odszyfrować maksymalnie 24 godziny komunikacji sieciowej.
 
@@ -53,7 +53,7 @@ W tym miejscu chciałbym zacytować wypowiedź twórcy serwisu [Hardenize](https
 
 Myślę, że wartość 4h jest rozsądną i jedną z optymalnych wartości.
 
-Przykład:
+Przykład konfiguracji:
 
 ```nginx
 # context: http, server
@@ -71,7 +71,7 @@ Przy kolejnym połączeniu, klient wysyła bilet wraz z parametrami początkowym
 
 Co kluczowe i warte zapamiętania, bilety sesji zawierają klucze sesji oryginalnego połączenia, więc skompromitowany bilet sesji pozwala atakującemu odszyfrować nie tylko wznowione połączenie, ale także oryginalne połączenie (problem nasila się, gdy sesja jest regularnie wznawiana, a te same klucze sesji są ponownie pakowane w nowe bilety sesji). Niestety większość serwerów nie usuwa kluczy sesji ani biletów, zwiększając w ten sposób ryzyko wycieku danych z poprzednich (i przyszłych) połączeń. Co więcej, takie zachowanie „niszczy” tajemnicę przekazywania (ang. _Forward Secrecy_), która chroni poufność połączeń na wypadek, gdyby serwer został naruszony przez atakującego, nawet po upływie okresu ważności biletu sesyjnego. Wznawianie połączeń bez wykonania żadnej wymiany kluczy (tym samym bez zaoferowania tajemnicy przekazywania) jest jednym z większych problemów (i niejedynym co zaraz zobaczysz) związanym z biletami sesji w TLSv1.2.
 
-Niestety, moim zdaniem, niektóre implementacje pozostawiają wiele do życzenia i powodując, że jest to jeden z najsłabszych elementów protokołu TLS. Dowodem na to jest najnowsza podatność oznaczona jako [CVE-2020-13777](https://www.gnutls.org/security-new.html#GNUTLS-SA-2020-06-03) odkryta w bibliotece GnuTLS. Szkopuł polegał na tym, że mechanizm rotacji kluczy w rzeczywistości w ogóle nie działa a zmiana, która miała pomóc w zachowaniu tajemniczy przekazywania i wprowadziła tę lukę, zwiększyła tylko złożoność. W konsekwencji możliwe było pasywne rozszyfrowanie większość wersji od TLSv1.0 do TLSv1.2 oraz przechwycenie większość połączeń wykorzystujących najnowszą wersję protokołu, tj. TLSv1.3 (więcej szczegółów tutaj: [CVE-2020-13777: TLS 1.3 session resumption works without master key, allowing MITM](https://gitlab.com/gnutls/gnutls/-/issues/1011)).
+Niestety, moim zdaniem, niektóre implementacje pozostawiają wiele do życzenia powodując, że jest to jeden z najsłabszych elementów protokołu TLS. Dowodem na to jest najnowsza podatność oznaczona jako [CVE-2020-13777](https://www.gnutls.org/security-new.html#GNUTLS-SA-2020-06-03) odkryta w bibliotece GnuTLS. Szkopuł polegał na tym, że mechanizm rotacji kluczy w rzeczywistości w ogóle nie działa a zmiana, która miała pomóc w zachowaniu tajemnicy przekazywania i wprowadziła tę lukę, zwiększyła tylko złożoność. W konsekwencji możliwe było pasywne rozszyfrowanie większość wersji od TLSv1.0 do TLSv1.2 oraz przechwycenie większość połączeń wykorzystujących najnowszą wersję protokołu, tj. TLSv1.3 (więcej szczegółów tutaj: [CVE-2020-13777: TLS 1.3 session resumption works without master key, allowing MITM](https://gitlab.com/gnutls/gnutls/-/issues/1011)).
 
 Co więcej, uważam, że obecnie bilety sesji nie powinny być w ogóle wykorzystywane przy włączonych wersjach TLSv1.2 i niższych, ponieważ ich największą wadą jest to, że są one wysyłane w czystej postaci na początku pierwotnego połączenia. Na poniższym zrzucie widać, że wiadomość <span class="h-b">NewSessionTicket</span> jest wysyłana z serwera do klienta przed wiadomością <span class="h-b">ChangeCipherSpec</span>:
 
@@ -87,7 +87,7 @@ Jeśli zdecydujesz się na włączenie biletów sesji, NGINX powinien wygenerowa
 
 Jeśli twoje serwery mają wystarczającą moc, możesz rozważyć całkowite wyłączenie identyfikatorów sesji i biletów sesji. Według mnie jest to nadal zalecane rozwiązanie, aby zapewnić tajemnicę przekazywania, ponieważ większość używanych serwerów HTTP (Apache, NGINX) nie obsługuje odpowiedniej rotacji tych parametrów.
 
-Przykład:
+Przykład konfiguracji:
 
 ```nginx
 # context: http, server
@@ -101,7 +101,7 @@ Oficjalna dokumentacja: [ssl_session_tickets](http://nginx.org/en/docs/http/ngx_
 
 Parametr ten odpowiada za kontrolę rozmiaru rekordu (za rozmiar bufora) przesyłanych danych za pomocą protokołu TLS. Klient może odszyfrować dane dopiero po otrzymaniu pełnego rekordu, zaś jego rozmiar może mieć znaczący wpływ na wydajność aplikacji w czasie ładowania strony. Jest to jeden z tych parametrów, dla którego spotkać można różne wartości i wyciągnąć wniosek, że idealny rozmiar nie istnieje. Spowodowane jest to pewną niejednoznacznością oraz problemami występującymi w sieci, która wykorzystuje protokół TCP.
 
-Aby dostosować wartość tego parametru, należy pamiętać m.in. o rezerwacji miejsca na różne opcje TCP (znaczniki czasu, skalowanie okna czy opcje selektywnego potwierdzania, tj. [SACK](https://www.icir.org/floyd/sacks.html)), które mogą zajmować do 40 bajtów. Uwzględnić należy także rozmiar rekordów TLS (pamiętaj, żę uścisk dłoni jest pełen małych pakietów), który zmienia się w zależności od wynegocjowanego szyfru między klientem a serwerem (średnio od 20 do 60 bajtów jako narzut protokołu TLS). Istotne jest także to, że przeglądarka (klient) może korzystać z danych dopiero po całkowitym otrzymaniu rekordu TLS, stąd wartość tego parametru powinna być mniej więcej taka, jak rozmiar segmentu TCP.
+Aby dostosować wartość tego parametru, należy pamiętać m.in. o rezerwacji miejsca na różne opcje TCP (znaczniki czasu, skalowanie okna czy opcje selektywnego potwierdzania, tj. [SACK](https://www.icir.org/floyd/sacks.html)), które mogą zajmować do 40 bajtów. Uwzględnić należy także rozmiar rekordów TLS (pamiętaj, że uścisk dłoni jest pełen małych pakietów), który zmienia się w zależności od wynegocjowanego szyfru między klientem a serwerem (średnio od 20 do 60 bajtów jako narzut protokołu TLS). Istotne jest także to, że przeglądarka (klient) może korzystać z danych dopiero po całkowitym otrzymaniu rekordu TLS, stąd wartość tego parametru powinna być mniej więcej taka, jak rozmiar segmentu TCP.
 
 Tym samym można przyjąć: <span class="h-b">1500 bajtów (MTU) - 40 bajtów (IP) - 20 bajtów (TCP) - 60-100 bajtów (narzut TLS) ~= 1300 bajtów</span>.
 
@@ -126,7 +126,7 @@ Spójrzmy także na poniższą rekomendację (wydaje mi się, że autorami są L
 - mniejszy rozmiar rekordu TLS = <span class="h-b">MTU/MSS (1500) - TCP (20 bytes) - IP (40 bytes): 1500 - 40 - 20 = 1440 bytes</span>
 - większy rozmiar rekordu TLS = maksymalny rozmiar wynosi <span class="h-b">16,383 (2^14 - 1)</span>
 
-Przykład:
+Przykład konfiguracji:
 
 ```nginx
 # context: http, server

@@ -49,7 +49,7 @@ Bardzo podobnie przedstawiają się dane, które można wyciągnąć z poziomu [
 
 To, co rzuca się w oczy to ciągłe wsparcie dla starszych i niezalecanych wersji protokołu TLS.
 
-Protokół TLSv1.3 jest najnowszą i znacznie bezpieczniejszą wersją wprowadzającą wiele poprawek bezpieczeństwa, a także takich, które poprawiają wydajność komunikacji TLS (polecam artykuł [TLS 1.3: Everything you need to know](https://www.thesslstore.com/blog/tls-1-3-everything-possibly-needed-know/)). Najważniejszymi założeniami wersji TLSv1.3 było usunięcie wszystkich funkcji, które osłabiały protokół w wersjach wcześniejszych oraz zmniejszenie jego ogólnej złożoności - co w wyniku miało wyeliminować potencjalne wektory ataku. Moim zdaniem, najnowsza wersja powinna być używany tam, gdzie to możliwe i tam, gdzie nie jest wymagana kompatybilność wsteczna.
+Protokół TLSv1.3 jest najnowszą i znacznie bezpieczniejszą wersją wprowadzającą wiele poprawek bezpieczeństwa, a także takich, które poprawiają wydajność komunikacji TLS (polecam artykuł [TLS 1.3: Everything you need to know](https://www.thesslstore.com/blog/tls-1-3-everything-possibly-needed-know/)). Najważniejszymi założeniami wersji TLSv1.3 było usunięcie wszystkich funkcji, które osłabiały protokół w wersjach wcześniejszych oraz zmniejszenie jego ogólnej złożoności — co w wyniku miało wyeliminować potencjalne wektory ataku. Moim zdaniem, najnowsza wersja powinna być używany tam, gdzie to możliwe i tam, gdzie nie jest wymagana kompatybilność wsteczna.
 
 ### Szyfry AEAD
 
