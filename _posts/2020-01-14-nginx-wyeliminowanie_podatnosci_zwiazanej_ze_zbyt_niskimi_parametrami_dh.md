@@ -17,15 +17,17 @@ W starszych wersjach serwera NGINX istniała luka, która pozwalała na wykorzys
 
 Celem wymiany kluczy Diffie-Hellman (DHKE) jest uzyskanie przez obie strony komunikacji wspólnego tajnego klucza, który może zostać wykorzystany do późniejszego szyfrowania komunikacji. Bezpieczeństwo protokołu polega na tym, że podstawa matematyczna, na której opiera się DH, jest praktycznie niemożliwa do złamania, gdy stosowane są wystarczająco duże wartości (min. 2048-bit).
 
-Jak już wspomniałem, DH jest używany do generowania publicznego wspólnego sekretu w celu późniejszego wykorzystania symetrycznego klucza prywatnego do faktycznego szyfrowania danych. Co istotne, jego podstawa matematyczna opiera się albo na liczbach pierwszych, albo na krzywych eliptycznych. Co więcej, znalezienie takich liczb pierwszych jest naprawdę intensywne obliczeniowo i nie można sobie na nie pozwolić przy każdym połączeniu, więc są one wstępnie obliczane (ustawiane z poziomu serwera HTTP). W przypadku serwera NGINX ustawiamy je za pomocą dyrektywy `ssl_dhparam`.
+Jak już wspomniałem, DH jest używany do generowania publicznego wspólnego sekretu w celu późniejszego wykorzystania symetrycznego klucza prywatnego do faktycznego szyfrowania danych. Dokładny opis działania algorytmu DH znajdziesz w artykule [What is the Diffie–Hellman key exchange and how does it work?](https://www.comparitech.com/blog/information-security/diffie-hellman-key-exchange/).
 
-Należy także wiedzieć, że w idealnym przypadku Diffie-Hellman powinien być używany w połączeniu z uznaną metodą uwierzytelniania (RSA/ECC), taką jak podpisy cyfrowe, w celu weryfikacji tożsamości. Dokładny opis działania algorytmu DH znajdziesz w artykule [What is the Diffie–Hellman key exchange and how does it work?](https://www.comparitech.com/blog/information-security/diffie-hellman-key-exchange/).
+Co istotne, podstawa matematyczna tego algorytmu opiera się albo na liczbach pierwszych, albo na krzywych eliptycznych. Co więcej, znalezienie takich liczb pierwszych jest naprawdę intensywne obliczeniowo i nie można sobie na nie pozwolić przy każdym połączeniu, więc są one wstępnie obliczane (ustawiane z poziomu serwera HTTP). W przypadku serwera NGINX ustawiamy je za pomocą dyrektywy `ssl_dhparam`.
+
+Należy także wiedzieć, że w idealnym przypadku Diffie-Hellman powinien być używany w połączeniu z uznaną metodą uwierzytelniania (RSA/ECC), taką jak podpisy cyfrowe, w celu weryfikacji tożsamości.
 
   > Ciekawostką jest, że w rzeczywistości parametry te są wysyłane przez sieć publiczną (mogą być dostępne publicznie) przy każdej wymianie kluczy Diffie-Hellman (DH).
 
 Parametry te określają sposób, w jaki biblioteka OpenSSL wykonuje wymianę kluczy Diffie-Hellman (DH). Z matematycznego punktu widzenia, zawierają one najczęściej liczbę pierwszą <span class="h-b">p</span> i generator <span class="h-b">g</span>. Większe <span class="h-b">p</span> znacznie utrudni znalezienie wspólnego i tajnego klucza <span class="h-b">K</span>, chroniąc przed atakami pasywnymi.
 
-W celu zachowania jakości tych parametrów (a tym samym większej ich siły i bezpieczeństwa) istnieje kilka takich parametrów, które są znormalizowane (patrz: [RFC 5114 – Additional Diffie-Hellman Groups for Use with IETF Standards](https://tools.ietf.org/html/rfc5114) <sup>[IETF]</sup>). Co więcej, zgodnie z [RFC 7919 – Supported Groups Registry](https://tools.ietf.org/html/rfc7919#appendix-A) <sup>[IETF]</sup>, aby uzyskać najlepszą konfigurację zabezpieczeń, należy skorzystać ze znanych, wcześniej zdefiniowanych grup DH (zapewnić zgodności z normami NIST oraz FIPS). Parametry te są kontrolowane i mogą być bardziej odporne na ataki niż te losowo generowane przez administratora.
+W celu zachowania jakości tych parametrów (a tym samym większej ich siły i bezpieczeństwa) istnieje kilka takich parametrów, które są znormalizowane (patrz: [RFC 5114 – Additional Diffie-Hellman Groups for Use with IETF Standards](https://tools.ietf.org/html/rfc5114) <sup>[IETF]</sup>). Co więcej, zgodnie z [RFC 7919 – Supported Groups Registry](https://tools.ietf.org/html/rfc7919#appendix-A) <sup>[IETF]</sup>, aby uzyskać najlepszą konfigurację zabezpieczeń, należy skorzystać ze znanych, wcześniej zdefiniowanych grup DH (tym samym zapewnić zgodności z normami NIST oraz FIPS). Parametry te są kontrolowane i mogą być bardziej odporne na ataki niż te losowo generowane przez administratora.
 
 Przykład wstępnie zdefiniowanych grup:
 
@@ -64,14 +66,12 @@ Należy pamiętać, że parametry DH są wykorzystywane tylko w przypadku stosow
 
 ## Wyeliminowanie podatności
 
-Pierwszym i najważniejszym z rozwiązań jest aktualizacja serwera NGINX do wersji, w której wyeliminowano podatność. Częściowym rozwiązaniem jest jasne wskazanie „bezpiecznych/zalecanych” parametrów DH o minimalnej długości 2048-bit:
+Pierwszym i najważniejszym z rozwiązań jest aktualizacja serwera NGINX do wersji, w której wyeliminowano podatność. Drugim z zalecanych rozwiązań jest wykluczenie szyfrów DHE (obecnie przeglądarki praktycznie ich nie wykorzystują) i wskazanie tylko tych korzystających z krzywych eliptycznych w postaci efemerycznej, tj. ECDHE. Częściowym rozwiązaniem jest jasne wskazanie „bezpiecznych/zalecanych” parametrów DH o minimalnej długości 2048-bit:
 
 ```nginx
 ssl_dhparam ffdhe2048.pem;      # zalecane (predefiniowane)
-ssl_dhparam dhparams_2048.pem;  # nowo wygenerowane (w nazwie jawnie wskazano rozmiar)
+ssl_dhparam dhparams_2048.pem;  # wygenerowane samodzielnie
 ```
-
-Ostatnim rozwiązaniem jest wykluczenie szyfrów DHE (obecnie przeglądarki praktycznie ich nie wykorzystują) i wskazanie tylko tych korzystających z krzywych eliptycznych w postaci efemerycznej, tj. ECDHE.
 
 ## Dodatkowe zasoby
 

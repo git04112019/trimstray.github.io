@@ -49,11 +49,11 @@ Tak naprawdę, wykorzystanie szyfrowanego połączenia ma sens jedynie wtedy, gd
 
 ## Wydajność
 
-Ważną rzeczą, o której należy pamiętać, jest wydajność. HTTP jest wolniejszy niż HTTPS wykorzystujący HTTP/2 (tj. jedno połączenie TCP, multipleksowanie, kompresja nagłówków HPACK), HSTS, OCSP Stapling i kilka innych ulepszeń, z pewnym wyjątkiem.
+Ważną rzeczą, o której należy pamiętać, jest wydajność. HTTP jest wolniejszy niż HTTPS wykorzystujący HTTP/2 (tj. jedno połączenie TCP, multipleksowanie, kompresja nagłówków HPACK), HSTS, OCSP Stapling i kilka innych ulepszeń.
 
-Jak wiemy, HTTPS wymaga wstępnego „uścisku dłoni”. Proces ten może być bardzo wolny mimo tego, że rzeczywista ilość danych przesyłanych w ramach uzgadniania nie jest ogromna (zwykle poniżej 5 kB). Jednak w przypadku bardzo małych żądań może to być dość duże obciążenie.
+Pojawia się jednak pewna kwestia, która ma duży wpływ na wydajność protokołu HTTPS. Jak wiemy, HTTPS wymaga wstępnego „uścisku dłoni”. Proces ten może być bardzo wolny mimo tego, że rzeczywista ilość danych przesyłanych w ramach uzgadniania nie jest ogromna (zwykle poniżej 5 kB). Jednak w przypadku bardzo małych żądań może to być dość duże obciążenie.
 
-Podczas uzgadniania TLS używane jest szyfrowanie asymetryczne, następnie po ustanowieniu wspólnego klucza (po zakończeniu uzgadniania) wykorzystywane jest szyfrowanie symetryczne, czyli bardzo szybka forma szyfrowania, więc narzut jest minimalny.
+A co z pozostałą częścią transmisji? Podczas uzgadniania TLS używane jest szyfrowanie asymetryczne, następnie po ustanowieniu wspólnego klucza (po zakończeniu uzgadniania) wykorzystywane jest szyfrowanie symetryczne, czyli bardzo szybka forma szyfrowania, więc narzut jest minimalny.
 
 Moim zdaniem, wysyłanie wielu krótkich żądań za pomocą protokołu HTTPS będzie nieco wolniejsze niż za pomocą HTTP, jednak jeśli przesyłasz dużo danych w jednym żądaniu, różnica będzie nieznaczna (pamiętajmy także o pamięci podręcznej dla sesji TLS, w NGINX będzie to dyrektywa `ssl_session_cache`) — stąd koszt wydajności nie jest już tak istotny, jak kiedyś.
 
