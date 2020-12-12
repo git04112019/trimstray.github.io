@@ -628,6 +628,46 @@ rdb --command json redis/dump.rdb | md5sum
 
 Powyższą komendę można wykonać na każdym z węzłów i porównać wynik między nimi. Jeśli suma jest taka samo to OK, jeśli nie, to może być gdzieś problem. Pamiętaj jednak, że z racji replikacji asynchronicznej, zawsze istnieje pewne okno na utratę danych.
 
+Ostatnia sprawa to kopie zapasowe. Rozdział [Backing up Redis data](https://redis.io/topics/persistence#backing-up-redis-data) oficjalnej dokumentacji mówi tak:
+
+<p class="ext">
+  <em>
+    Redis is very data backup friendly since you can copy RDB files while the database is running: the RDB is never modified once produced, and while it gets produced it uses a temporary name and is renamed into its final destination atomically using rename(2) only when the new snapshot is complete. This means that copying the RDB file is completely safe while the server is running.
+  </em>
+</p>
+
+Opisuje on także pewne sugestie, które należy mieć na uwadze:
+
+- utwórz zadanie cron na swoim serwerze, tworząc cogodzinne migawki pliku RDB w jednym katalogu i codzienne migawki w innym katalogu
+- pamiętaj, aby nazwać migawki informacjami o danych i czasie
+- za każdym razem, gdy uruchamiany jest cron, dobrze jest usunąć stare migawki (np. starsze niż 3 miesiące)
+- pamiętaj, aby przynajmniej raz dziennie kopiować migawkę RDB poza centrum danych lub przynajmniej poza fizyczną maszynę, na której działa instancja Redis
+
+Do wykonywania kopii możesz wykorzystać narzędzie `rdiff-backup`:
+
+```
+# 1)
+0 0 * * * rdiff-backup --preserve-numerical-ids --no-file-statistics /var/lib/redis /backup/redis
+
+# 2)
+@daily rdiff-backup --preserve-numerical-ids --no-file-statistics /var/lib/redis /backup/redis
+```
+
+Ponadto, w przypadku przywracania, warto pamiętać o poniższych zasadach:
+
+- w przypadku baz danych, w których ustawiona jest flaga `appendonly no`, możesz wykonać następujące czynności:
+  - zatrzymaj proces Redisa, ponieważ nadpisuje bieżący plik RDB przed wyjściem
+  - skopiuj kopię zapasową pliku RDB do katalogu roboczego (jest to opcja `dir` w konfiguracji). Upewnij się, że nazwa pliku kopii zapasowej jest zgodna z opcją konfiguracji `dbfilename`
+  - uruchom proces Redisa
+
+- jeśli chcesz przywrócić plik RDB do bazy danych z włączoną opcją `appendonly yes`, powinieneś zrobić to w następujący sposób:
+  - zatrzymaj proces Redisa, ponieważ nadpisuje bieżący plik RDB przed wyjściem
+  - skopiuj kopię zapasową pliku RDB do katalogu roboczego (jest to opcja `dir` w konfiguracji). Upewnij się, że nazwa pliku kopii zapasowej jest zgodna z opcją konfiguracji `dbfilename`
+  - ustaw flagę `appendonly no`
+  - uruchom proces Redisa
+  - wykonaj z poziomu konsoli Redisa `BGREWRITEAOF`, aby utworzyć nowy plik tylko do dopisywania
+  - przywróć flagę `appendonly yes`
+
 Przy okazji, jeśli chodzi o tworzenie kopii zapasowej danych przechowywanych w Redisie i ich odtwarzania, zapoznaj się z poniższymi zasobami:
 
 - [redis-dump](https://github.com/delano/redis-dump)
