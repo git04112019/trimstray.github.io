@@ -610,6 +610,24 @@ Kolejna niezwykle ważna uwaga, otóż załóżmy, że już skonfigurowałeś Re
 
 Natomiast jeśli używasz Redisa w środowisku wymagającym bardzo dużej ilości zapisów, podczas zapisywania pliku RDB na dysku lub przepisywania dziennika AOF, Redis może zużywać 2x więcej pamięci niż podczas normalnej pracy. Wykorzystywana dodatkowa pamięć jest proporcjonalna do liczby stron pamięci zmodyfikowanych przez zapisy podczas procesu zapisywania, więc bardzo często jest proporcjonalna do liczby kluczy przechowywanych w bazie. Upewnij się, że odpowiednio dobrałeś rozmiar swojej pamięci za pomocą parametru `maxmemory`, o którym porozmawiamy za chwilę.
 
+Dobrze, a w jaki sposób zweryfikować dane w Redisie i to, czy np. są takie same między kilkoma instancjami? Można np. zatrzymać każdą z nich i porównać sumy kontrolne plików RDP (jeśli wykorzystujesz zapisy). Możesz także skorzystać z ciekawego narzędzia o nazwie [redis-rdb-tools](https://github.com/sripathikrishnan/redis-rdb-tools). Jest to parser plików RDB i pozwala m.in. na generowanie raportu pamięci danych ze wszystkich baz danych i kluczy, konwertowania zrzutu do formatu JSON czy porównywania dwóch plików zrzutu.
+
+Oto sposób instalacji:
+
+```
+yum install gcc python-devel
+pip install --upgrade pip
+pip install rdbtools python-lzf
+```
+
+Aby wyświetlić wszystkie klucze i wartości a na końcu wyliczyć sumę kontrolną md5 (lub coś podobnego):
+
+```
+rdb --command json redis/dump.rdb | md5sum
+```
+
+Powyższą komendę można wykonać na każdym z węzłów i porównać wynik między nimi. Jeśli suma jest taka samo to OK, jeśli nie, to może być gdzieś problem. Pamiętaj jednak, że z racji replikacji asynchronicznej, zawsze istnieje pewne okno na utratę danych.
+
 Przy okazji, jeśli chodzi o tworzenie kopii zapasowej danych przechowywanych w Redisie i ich odtwarzania, zapoznaj się z poniższymi zasobami:
 
 - [redis-dump](https://github.com/delano/redis-dump)
