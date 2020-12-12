@@ -656,17 +656,23 @@ Do wykonywania kopii możesz wykorzystać narzędzie `rdiff-backup`:
 Ponadto, w przypadku przywracania, warto pamiętać o poniższych zasadach:
 
 - w przypadku baz danych, w których ustawiona jest flaga `appendonly no`, możesz wykonać następujące czynności:
-  - zatrzymaj proces Redisa, ponieważ nadpisuje bieżący plik RDB przed wyjściem
+  - zatrzymaj proces Redis, ponieważ nadpisuje bieżący plik RDB przed wyjściem
   - skopiuj kopię zapasową pliku RDB do katalogu roboczego (jest to opcja `dir` w konfiguracji). Upewnij się, że nazwa pliku kopii zapasowej jest zgodna z opcją konfiguracji `dbfilename`
-  - uruchom proces Redisa
+  - uruchom proces Redis
 
 - jeśli chcesz przywrócić plik RDB do bazy danych z włączoną opcją `appendonly yes`, powinieneś zrobić to w następujący sposób:
-  - zatrzymaj proces Redisa, ponieważ nadpisuje bieżący plik RDB przed wyjściem
+  - zatrzymaj proces Redis, ponieważ nadpisuje bieżący plik RDB przed wyjściem
   - skopiuj kopię zapasową pliku RDB do katalogu roboczego (jest to opcja `dir` w konfiguracji). Upewnij się, że nazwa pliku kopii zapasowej jest zgodna z opcją konfiguracji `dbfilename`
   - ustaw flagę `appendonly no`
-  - uruchom proces Redisa
-  - wykonaj z poziomu konsoli Redisa `BGREWRITEAOF`, aby utworzyć nowy plik tylko do dopisywania
+  - uruchom proces Redis
+  - wykonaj z poziomu konsoli Redis komendę `BGREWRITEAOF`, aby utworzyć nowy plik tylko do dopisywania
   - przywróć flagę `appendonly yes`
+
+Jeżeli zajdzie potrzeba, może pozmieniać parametry konfiguracji odpowiedzialne za nazwy plików, tryby zapisu czy katalog roboczy lub na szybko odpalić serwera Redis w następujący sposób:
+
+```
+redis-server --dbfilename mydump001.rdb --dir /data --appendonly no
+```
 
 Przy okazji, jeśli chodzi o tworzenie kopii zapasowej danych przechowywanych w Redisie i ich odtwarzania, zapoznaj się z poniższymi zasobami:
 
