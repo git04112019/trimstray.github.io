@@ -47,7 +47,7 @@ Bardzo podobnie przedstawiają się dane, które można wyciągnąć z poziomu [
   <img src="/assets/img/posts/shodan_tls_stats.png">
 </p>
 
-To, co rzuca się w oczy to ciągłe wsparcie dla starszych i niezalecanych wersji protokołu TLS.
+To, co rzuca się w oczy to ciągłe wsparcie dla starszych i niezalecanych wersji protokołu TLS oraz ok. 10% (według Shodana) i prawie 30% (według SSL Pulse) obecność protokołu TLSv1.3 w skali całego zmierzonego ruchu.
 
 Protokół TLSv1.3 jest najnowszą i znacznie bezpieczniejszą wersją wprowadzającą wiele poprawek bezpieczeństwa, a także takich, które poprawiają wydajność komunikacji TLS (polecam artykuł [TLS 1.3: Everything you need to know](https://www.thesslstore.com/blog/tls-1-3-everything-possibly-needed-know/)). Najważniejszymi założeniami wersji TLSv1.3 było usunięcie wszystkich funkcji, które osłabiały protokół w wersjach wcześniejszych oraz zmniejszenie jego ogólnej złożoności — co w wyniku miało wyeliminować potencjalne wektory ataku. Moim zdaniem, najnowsza wersja powinna być używany tam, gdzie to możliwe i tam, gdzie nie jest wymagana kompatybilność wsteczna.
 
