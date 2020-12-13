@@ -19,7 +19,7 @@ Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeńs
 
 Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
-## ssl_session_cache
+## Rozmiar i typ pamięci podręcznej
 
 Pierwszy z parametrów zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), który jest także odpowiednim, aby pamięć podręczna mogła być zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SSL jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych).
 
@@ -37,7 +37,7 @@ ssl_session_cache shared:NGX_SSL_CACHE:10m;
 
 Oficjalna dokumentacja: [ssl_session_cache](http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_cache).
 
-## ssl_session_timeout
+## Czas życia parametrów sesji
 
 Zgodnie z [RFC 5077 - Ticket Lifetime](https://tools.ietf.org/html/rfc5077#section-5.6) <sup>[IETF]</sup>, sesje nie powinny być utrzymywane dłużej niż 24 godziny (jest to maksymalny czas dla sesji SSL/TLS). Jakiś czas temu znalazłem rekomendację, aby dyrektywa ta miała jeszcze mniejszą, wręcz bardzo niską wartość ustawioną na ok. 15 minut (co ciekawe, dokumentacja serwera NGINX ustawia wartość domyślną na 5 minut). Ma to zapobiegać nadużyciom przez reklamodawców (trackerów) takich jak Google i Facebook. Nigdy nie stosowałem tak niskich wartości, jednak myślę, że w jakiś sposób może to mieć sens.
 
@@ -63,7 +63,7 @@ ssl_session_timeout 4h;
 
 Oficjalna dokumentacja: [ssl_session_timeout](http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout).
 
-## ssl_session_tickets
+## Wznawianie sesji
 
 Kolejną modyfikacją mogą być klucze sesji lub inaczej bilety sesji. Zawierają one pełny stan sesji (w tym klucz wynegocjowany między klientem a serwerem czy wykorzystywane zestawy szyfrów), dzięki czemu zmniejszają obciążenie uścisku dłoni, który jak wiemy, jest najbardziej kosztowny w całym procesie uzgadniania. Taki mechanizm przydaje się szczególnie gdy dojdzie np. do zerwania sesji. Wszystkie informacje wymagane do kontynuowania sesji są tam zawarte, więc serwer może wznowić sesję, wykorzystując wcześniejsze parametry. Gdy klient obsługuje bilety sesji, serwer zaszyfruje klucz sesji kluczem, który posiada tylko serwer, kluczem szyfrowania biletu sesji (ang. _STEK - Session Ticket Encryption Key_) i wyśle go do klienta. Klient przechowuje ten zaszyfrowany klucz sesji, zwany biletem, wraz z odpowiednim kluczem sesji. Serwer tym samym zapomina o kliencie, umożliwiając wdrożenia bezstanowe.
 
@@ -97,9 +97,9 @@ ssl_session_tickets off;
 
 Oficjalna dokumentacja: [ssl_session_tickets](http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_tickets).
 
-## ssl_buffer_size
+## Rozmiar bufora danych
 
-Parametr ten odpowiada za kontrolę rozmiaru rekordu (za rozmiar bufora) przesyłanych danych za pomocą protokołu TLS. Klient może odszyfrować dane dopiero po otrzymaniu pełnego rekordu, zaś jego rozmiar może mieć znaczący wpływ na wydajność aplikacji w czasie ładowania strony. Jest to jeden z tych parametrów, dla którego spotkać można różne wartości i wyciągnąć wniosek, że idealny rozmiar nie istnieje. Spowodowane jest to pewną niejednoznacznością oraz problemami występującymi w sieci, która wykorzystuje protokół TCP.
+Parametr ten odpowiada za kontrolę rozmiaru rekordu (rozmiaru bufora) przesyłanych danych za pomocą protokołu TLS. Klient może odszyfrować dane dopiero po otrzymaniu pełnego rekordu, zaś jego rozmiar może mieć znaczący wpływ na wydajność aplikacji w czasie ładowania strony. Jest to jeden z tych parametrów, dla którego spotkać można różne wartości i wyciągnąć wniosek, że idealny rozmiar nie istnieje. Spowodowane jest to pewną niejednoznacznością oraz problemami występującymi w sieci, która wykorzystuje protokół TCP.
 
 Aby dostosować wartość tego parametru, należy pamiętać m.in. o rezerwacji miejsca na różne opcje TCP (znaczniki czasu, skalowanie okna czy opcje selektywnego potwierdzania, tj. [SACK](https://www.icir.org/floyd/sacks.html)), które mogą zajmować do 40 bajtów. Uwzględnić należy także rozmiar rekordów TLS (pamiętaj, że uścisk dłoni jest pełen małych pakietów), który zmienia się w zależności od wynegocjowanego szyfru między klientem a serwerem (średnio od 20 do 60 bajtów jako narzut protokołu TLS). Istotne jest także to, że przeglądarka (klient) może korzystać z danych dopiero po całkowitym otrzymaniu rekordu TLS, stąd wartość tego parametru powinna być mniej więcej taka, jak rozmiar segmentu TCP.
 
@@ -111,7 +111,7 @@ Spakowanie każdego rekordu TLS do dedykowanego pakietu powoduje dodatkowe obci�
 
 Jednak im większy rozmiar rekordu TLS, tym większe prawdopodobieństwo, że możemy ponieść dodatkowy koszt z powodu retransmisji TCP lub „przepełnienia” okna TCP (ang. _TCP congestion window_). Rozwiązanie jest w miarę proste i polega na wysyłaniu mniejszych rekordów tak, aby pasowały do jednego segmentu TCP. Jeśli okno przeciążenia TCP jest małe, tj. podczas powolnego startu sesji (ang. _TCP Slow Start_) lub jeśli wysyłamy interaktywne dane, które powinny zostać przetworzone jak najszybciej (czyli większość ruchu HTTP), wówczas mały rozmiar rekordu pomaga zmniejszyć kosztowne opóźnienie związane z opóźnieniami jeszcze innej warstwy buforowania.
 
-W dokumentacji serwera NGINX jest następujące zalecenie:
+W dokumentacji serwera NGINX znajduje się następujące zalecenie:
 
 <p class="ext">
   <em>
@@ -123,8 +123,8 @@ Myślę jednak, że w przypadku stałego rozmiaru, optymalną wartością jest w
 
 Spójrzmy także na poniższą rekomendację (wydaje mi się, że autorami są Leif Hedstrom, Thomas Jackson oraz Brian Geffon, niestety nie mogę znaleźć jej źródła):
 
-- mniejszy rozmiar rekordu TLS = <span class="h-b">MTU/MSS (1500) - TCP (20 bytes) - IP (40 bytes): 1500 - 40 - 20 = 1440 bytes</span>
-- większy rozmiar rekordu TLS = maksymalny rozmiar wynosi <span class="h-b">16,383 (2^14 - 1)</span>
+- mniejszy rozmiar rekordu TLS = <span class="h-b">MTU/MSS (1500) - TCP (20 bytes) - IP (40 bytes) = 1440 bytes</span>
+- większy rozmiar rekordu TLS = maksymalny rozmiar wynosi <span class="h-b">16,383 (2^14 - 1) bytes</span>
 
 Przykład konfiguracji:
 
