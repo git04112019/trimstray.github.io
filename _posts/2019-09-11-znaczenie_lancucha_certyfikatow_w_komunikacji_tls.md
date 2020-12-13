@@ -105,7 +105,7 @@ Istnieje kilka możliwości przerwania łańcucha zaufania, w tym między innymi
 
 - każdy certyfikat w łańcuchu jest samopodpisany, chyba że jest to rootCA
 - kolejność certyfikatów w łańcuchu certyfikatów jest nieprawidłowa
-- łańcucha zawiera dodatkowe niepowiązane certyfikaty
+- łańcuch zawiera dodatkowe niepowiązane certyfikaty
 - nie każdy certyfikat pośredni jest sprawdzany, począwszy od oryginalnego certyfikatu aż do certyfikatu głównego
 - pośredni certyfikat podpisany przez urząd certyfikacji nie ma oczekiwanych podstawowych ograniczeń (patrz: [SSL/TLS: Policy Constraints vs. Basic Constraints](https://security.stackexchange.com/a/114848)) ani innych ważnych rozszerzeń
 - certyfikat główny został przejęty lub autoryzowany dla niewłaściwej strony
@@ -198,7 +198,7 @@ Zgodnie ze standardem TLS łańcuch może zawierać certyfikat główny lub nie.
 
 Serwer zawsze wysyła certyfikaty tworzące łańcuch w trakcie uzgadniania, ale moim zdaniem, nigdy nie powinien prezentować łańcuchów certyfikatów zawierających kotwicę zaufania, która jest certyfikatem głównego urzędu certyfikacji, ponieważ certyfikat główny jest bezużyteczny do celów sprawdzania poprawności. I rzeczywiście, jeśli klient nie ma jeszcze certyfikatu głównego, wówczas otrzymanie go z serwera nie pomogłoby, ponieważ takiemu certyfikatowi można zaufać tylko wtedy, jeśli zostanie dostarczony z zaufanego źródła (tj. lokalnego magazynu certyfikatów). Kluczową cechą zaufania <span class="h-b">X.509</span> jest to, że wymaga on wcześniej znanych korzeni (lub kotwic zaufania), dlatego, aby mechanizm sprawdzania poprawności łańcucha serwera zadziałał, certyfikat główny powinien znajdować się w lokalnym magazynie zaufanych certyfikatów.
 
-Gdy klient inicjuje połączenie TLS, serwer powinien odesłać swój własny certyfikat wraz z wszelkimi certyfikatami pośrednimi (jeśli je wykorzystuje). Na przykład dla wersji TLSv1.2 jest to określone w sekcji 7.4.2 RFC 5246 (patrz cytat poniżej).
+Gdy klient inicjuje połączenie TLS, serwer powinien odesłać swój własny certyfikat wraz z wszelkimi certyfikatami pośrednimi (jeśli je wykorzystuje). Na przykład dla wersji TLSv1.2 jest to określone w sekcji 7.4.2 RFC 5246 (patrz odnośnik poniżej).
 
 Widzimy, że zgodnie ze standardem serwer ma wysłać kompletny, uporządkowany łańcuch certyfikatów, zaczynając od właściwego (czyli wystawionego dla odpowiedniego podmiotu) certyfikatu serwera, dołączając certyfikat dla pośredniego urzędu certyfikacji, który go wystawił, a następnie certyfikat dla pośredniego urzędu certyfikacji, który wystawił poprzedni pośredni certyfikat i tak dalej. Na końcu łańcucha serwer ma możliwość dołączenia bądź nie certyfikat głównego urzędu certyfikacji. Jednak jeśli łańcuch ma być przydatny dla klienta, klient musi już znać certyfikat główny, a zatem nie potrzebuje jego nowej kopii. Kolejność oraz ew. wymóg stosowania certyfikatu głównego został dokładniej opisany w [RFC 5246 - 7.4.2. Server Certificate](https://tools.ietf.org/html/rfc5246#section-7.4.2) <sup>[IETF]</sup>, które opisuje strukturę komunikatu <span class="h-b">Server Certificate</span>:
 
