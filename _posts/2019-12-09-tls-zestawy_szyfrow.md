@@ -30,7 +30,7 @@ Podczas procesu uzgadniania protokołu TLS klient zaczyna od poinformowania serw
   <img src="/assets/img/posts/cipher_suite_neg.png">
 </p>
 
-Klient sugeruje pakiet szyfrów, jednak to serwer dokonuje ostatecznego wyboru. Decyzja dotycząca zestawu szyfrów zawsze leży w gestii serwera. Serwer następnie negocjuje i wybiera odpowiedni szyfr do wykorzystania w komunikacji. Jeśli serwer nie jest przygotowany do użycia żadnego z szyfrów reklamowanych przez klienta, nie zezwoli na sesję.
+Klient sugeruje pakiet szyfrów, jednak to serwer dokonuje ostatecznego wyboru. <span class="h-s">Decyzja dotycząca zestawu szyfrów zawsze leży w gestii serwera</span>. Serwer następnie negocjuje i wybiera odpowiedni szyfr do wykorzystania w komunikacji. Jeśli serwer nie jest przygotowany do użycia żadnego z szyfrów reklamowanych przez klienta, nie zezwoli na sesję.
 
 Jeżeli chodzi o zestawy szyfrów, to musisz wiedzieć, że są trzy sposoby ich nazewnictwa (więcej informacji znajdziesz na [OpenSSL IANA Mapping](https://testssl.sh/openssl-iana.mapping.html)):
 
@@ -67,7 +67,7 @@ Jednak postaram się w pełni zdefiniować problem. W pierwszej kolejności przy
 
 - **bezpieczny** (ang. _secure_) - bezpieczne szyfry są uważane za najnowocześniejsze i jeśli chcesz zabezpieczyć swój serwer sieciowy, z pewnością powinieneś wybrać szyfry z tego zestawu. Tylko bardzo stare systemy operacyjne, przeglądarki lub aplikacje nie są w stanie ich obsłużyć
 
-- **zalecany** (ang. _recommended_) - wszystkie „zalecane” szyfry są z definicji „bezpiecznymi” szyframi. Zalecane oznacza, że te szyfry obsługują również PFS (Perfect Forward Secrecy) i powinny być Twoim pierwszym wyborem, jeśli chcesz zachować najwyższy poziom bezpieczeństwa. Mogą jednak wystąpić problemy ze zgodnością ze starszymi klientami, które nie obsługują szyfrów PFS
+- **zalecany** (ang. _recommended_) - wszystkie „zalecane” szyfry są z definicji „bezpiecznymi” szyframi. Zalecane oznacza, że te szyfry obsługują również PFS (ang. _Perfect Forward Secrecy_) i powinny być Twoim pierwszym wyborem, jeśli chcesz zachować najwyższy poziom bezpieczeństwa. Mogą jednak wystąpić problemy ze zgodnością ze starszymi klientami, które nie obsługują szyfrów PFS
 
 Należy zdać sobie sprawę, że słaby (lepszym określeniem może być wrażliwy) nie oznacza niepewny/niebezpieczny. Jest tutaj pewna delikatna różnica: szyfr zwykle jest oznaczany jako słaby, ponieważ istnieje pewna fundamentalna wada projektowa, która utrudnia bezpieczne wdrożenie oraz sprawia, że dalsze korzystanie z danego algorytmu lub kryptosystemu stanowi potencjalne ryzyko.
 
@@ -332,11 +332,13 @@ Jeżeli zależy Ci na zachowaniu zgodności z wytycznymi HIPAA i [NIST SP 800-38
   <img src="/assets/img/posts/mobile_enc_speed.png">
 </p>
 
-Co więcej, szybkość i bezpieczeństwo to prawdopodobnie powód, dla którego Google już obsługuje <span class="h-b">ChaCha20+Poly1305/AES</span> w Chrome. Mozilla i Cloudflare używają tych szyfrów w swoich konfiguracjach. Również IETF rekomenduje ich użycie.
+Co więcej, szybkość i bezpieczeństwo to prawdopodobnie powód, dla którego Google włączyło obsługę <span class="h-b">ChaCha20+Poly1305/AES</span> w Chrome. Mozilla i Cloudflare używają tych szyfrów w swoich konfiguracjach. Również IETF rekomenduje ich użycie.
 
 ## Przykłady konfiguracji
 
-Uważam, że jednym z bezpieczniejszych zestawów przy włączonym TLSv1.3 oraz TLSv1.2 jest:
+Zgodnie z tym co napisałem na początku tego wpisu, czyli, że zestawy szyfrów są jednym z najczęściej zmieniających się parametrów, pamiętaj o cyklicznej weryfikacji obecnych zaleceń czy standardów i dostosowaniu konfiguracji do aktualnych wytycznych.
+
+Według mnie obecnie jednym z bezpieczniejszych zestawów przy włączonym TLSv1.3 oraz TLSv1.2 jest:
 
 ```nginx
 ssl_ciphers "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256";
@@ -391,16 +393,16 @@ ssl_ciphers "EECDH+CHACHA20:EDH+AESGCM:AES256+EECDH:AES256+EDH";
 
 ### Mozilla SSL Configuration Generator
 
-Poniżej znajduje się porównanie konfiguracji z wytycznymi w [Mozilla SSL Configuration Generator](https://mozilla.github.io/server-side-tls/ssl-config-generator/):
+Poniżej znajduje się porównanie konfiguracji z przykładami znajdującymi się w [Mozilla SSL Configuration Generator](https://mozilla.github.io/server-side-tls/ssl-config-generator/):
 
-- Modern profile, OpenSSL 1.1.1 (i warianty) dla TLSv1.3
+- Modern profile, OpenSSL 1.1.1 dla TLSv1.3
 
 ```nginx
 # Mozilla nie określa szyfrów dla TLSv1.3
 # ssl_ciphers "TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-256-GCM-SHA384:TLS13-AES-128-GCM-SHA256";
 ```
 
-- Modern profile, OpenSSL 1.1.1 (i warianty) dla TLSv1.2 + TLSv1.3
+- Modern profile, OpenSSL 1.1.1 dla TLSv1.2 + TLSv1.3
 
 ```nginx
 # Mozilla nie określa szyfrów dla TLSv1.3
@@ -408,7 +410,7 @@ Poniżej znajduje się porównanie konfiguracji z wytycznymi w [Mozilla SSL Conf
 ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384";
 ```
 
-- Intermediate profile, OpenSSL 1.1.0b + 1.1.1 (i warianty) dla TLSv1.2
+- Intermediate profile, OpenSSL 1.1.0b + 1.1.1 dla TLSv1.2
 
 ```nginx
 ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384";
