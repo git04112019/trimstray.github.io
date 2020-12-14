@@ -332,7 +332,7 @@ Jeżeli zależy Ci na zachowaniu zgodności z wytycznymi HIPAA i [NIST SP 800-38
   <img src="/assets/img/posts/mobile_enc_speed.png">
 </p>
 
-Co więcej, szybkość i bezpieczeństwo to prawdopodobnie powód, dla którego Google włączyło obsługę <span class="h-b">ChaCha20+Poly1305/AES</span> w Chrome. Mozilla i Cloudflare używają tych szyfrów w swoich konfiguracjach. Również IETF rekomenduje ich użycie.
+Co więcej, szybkość i bezpieczeństwo to prawdopodobnie powód, dla którego Google włączyło obsługę <span class="h-b">ChaCha20+Poly1305/AES</span> w Chrome. Mozilla i Cloudflare także używają tych szyfrów w swoich konfiguracjach. Również IETF rekomenduje ich użycie.
 
 ## Przykłady konfiguracji
 
