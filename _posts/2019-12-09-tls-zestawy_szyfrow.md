@@ -328,6 +328,10 @@ Jedną z ciekawostek są zalecenia branżowe dotyczące kodu uwierzytelnienia wi
 
 Jeżeli zależy Ci na zachowaniu zgodności z wytycznymi HIPAA i [NIST SP 800-38D]({{ site.url }}/assets/pdfs/nistspecialpublication800-38d.pdf) <sup>[PDF]</sup> powinieneś wyłączyć te zestawy szyfrów. Jest to jednak dla mnie niezrozumiałe i nie znalazłem racjonalnego wyjaśnienia, dlaczego powinniśmy to robić. <span class="h-b">ChaCha20</span> jest prostszy niż <span class="h-b">AES</span> i obecnie jest znacznie szybszym algorytmem szyfrowania, jeśli nie jest dostępne przyspieszenie sprzętowe <span class="h-b">AES</span> (w praktyce <span class="h-b">AES</span> jest często implementowany w sprzęcie, co daje mu przewagę).
 
+<p align="center">
+  <img src="/assets/img/posts/mobile_enc_speed.png">
+</p>
+
 Co więcej, szybkość i bezpieczeństwo to prawdopodobnie powód, dla którego Google już obsługuje <span class="h-b">ChaCha20+Poly1305/AES</span> w Chrome. Mozilla i Cloudflare używają tych szyfrów w swoich konfiguracjach. Również IETF rekomenduje ich użycie.
 
 ## Przykłady konfiguracji
