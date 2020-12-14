@@ -10,25 +10,39 @@ favorite: false
 toc: true
 ---
 
-W tym wpisie chciałbym poruszyć kwestię dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi. Oba są certyfikatami cyfrowymi, opartymi na formacie <span class="h-b">X.509</span>, i co do zasady, potwierdzają zgodność oraz weryfikują tożsamość danego podmiotu (np. certyfikat serwera potwierdza tożsamość serwera).
+Certyfikaty są złożonym tematem i często nie są dobrze rozumiane. Dlatego w tym wpisie chciałbym poruszyć kwestię dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi.
 
-Certyfikaty są najczęściej potrzebne, aby zabezpieczyć dane oraz zweryfikować właściciela witryny. Same w sobie zawierają wiele istotnych informacji, tj. informacje o urzędzie certyfikacji, który wydał certyfikat, podpis cyfrowy takiego urzędu, klucz publiczny czy datę ważności certyfikatu. Te informacje (tzw. pola) określają, do jakich zastosowań można użyć danego certyfikatu.
+Certyfikaty są najczęściej potrzebne, aby zabezpieczyć dane oraz zweryfikować właściciela. Same w sobie zawierają wiele istotnych informacji, tj. informacje o urzędzie certyfikacji, który wydał certyfikat, podpis cyfrowy takiego urzędu, klucz publiczny czy datę ważności certyfikatu. Te informacje (tzw. pola) określają natomiast, do jakich zastosowań może zostać użyty dany certyfikat.
 
 ## Format X.509
 
-Przed rozpoczęciem dalszej lektury należy wiedzieć, że oba typy certyfikatów są zdefiniowane jako format <span class="h-b">X.509</span>. Tego formatu używają certyfikaty SSL/TLS, o których w tym artykule będziemy mówić. Można tych terminów używać zamiennie, jednak należy znać różnicę.
+Oba z wymienionych certyfikatów są certyfikatami cyfrowymi, opartymi na formacie <span class="h-b">X.509</span>, wykorzystywanymi w celu potwierdzenia zgodności oraz weryfikacji tożsamości danego podmiotu (np. certyfikat serwera potwierdza tożsamość serwera).
 
-<span class="h-b">X.509</span> jest standardem, który definiuje format certyfikatów klucza publicznego, weryfikuje tożsamość posiadacza certyfikatu i mapuje klucz publiczny na użytkownika, komputer lub usługę (np. domenę).
+<span class="h-b">X.509</span> jest standardem, który definiuje format certyfikatów klucza publicznego, a także sposób weryfikacji tożsamości posiadacza certyfikatu oraz określa mapowanie kluczy publicznych na użytkownika, komputer lub usługę (np. domenę) — czyli pozwala bezpiecznie skojarzyć pary kluczy kryptograficznych z tożsamościami, takimi jak strony internetowe, osoby lub organizacje. Natomiast jednym z jego najważniejszych elementów są urzędy certyfikacji, które pełnią rolę zaufanej trzeciej strony w stosunku do podmiotów oraz użytkowników certyfikatów.
 
-Certyfikaty SSL/TLS są certyfikatami <span class="h-b">X.509</span> z tzw. rozszerzonym użyciem klucza (ang. _Extended Key Usage_). Czyli rozszerzeniem, które określa cel użycia certyfikatu, np. do uwierzytelniania serwera czy uwierzytelniania klienta. W celu uzyskania bardziej szczegółowych informacji odsyłam do [RFC 5280 - Extended Key Usage](https://tools.ietf.org/html/rfc5280#section-4.2.1.12).
+Jeżeli nie jest to dla Ciebie jasne, może wyobrazić sobie, że standard ten w odniesieniu do certyfikatów pozwala odpowiedzieć na poniższe pytania:
+
+- kto powinien używać tego certyfikatu?
+- który użytkownik powinien przedstawić ten certyfikat?
+- której organizacji należy zaufać?
+
+Tak naprawdę, każdy certyfikat <span class="h-b">X.509</span> zawiera klucz publiczny, podpis cyfrowy oraz informacje o tożsamości skojarzonej z certyfikatem i wystawiającym go urzędem certyfikacji. Klucz publiczny jest częścią pary kluczy, która zawiera również klucz prywatny, który to musi być maksymalnie chroniony. Klucz publiczny jest natomiast zawarty w certyfikacie i może zostać udostępniony każdemu (stąd jest publiczny). Dzięki temu możliwe jest cyfrowe podpisywanie dokumentów (te podpisy może zweryfikować każdy, kto ma odpowiedni klucz publiczny), co pozwala stronom trzecim na wysyłanie wiadomości zaszyfrowanych za pomocą klucza publicznego, który może odszyfrować tylko właściciel klucza prywatnego.
+
+  > Sam klucz publiczny niekoniecznie jest z definicji certyfikatem. To klucz publiczny i skojarzone z nim dane atrybutów definiują certyfikat. Certyfikat zapewnia ustandaryzowany i bezpieczny format do komunikacji z określonymi systemami wraz z atrybutami pomagającymi sprawdzić zaufanie pary kluczy. Sposób budowania certyfikatów jest zdefiniowany właśnie w standardzie X.509.
+
+Wspomniałem przed chwilą, że klucz publiczny i skojarzone z nim dane atrybutów definiują certyfikat. Jednym z najważniejszych atrybutów, który jest wręcz kluczową i najprawdopodobniej najważniejszą częścią certyfikatu jest atrybuty podmiotu (ang. _subject attribute_). Dzięki nim podmiot posiada atrybuty zdefiniowane m.in. przez standard <span class="h-b">X.509</span> (tak naprawdę całą rodzinę standardów określoną jako <span class="h-b">X.500</span>), które reprezentują, komu lub czemu wydano certyfikat. Atrybut podmiotu (lub inaczej temat) to ciąg znaków o odpowiednim typie atrybutu, np. pole `C` określa kod kraju lub pole `CN` określające nazwę domeny, dla której ma być wystawiony certyfikat SSL/TLS.
+
+Co istotne w kontekście tego wpisu, certyfikaty SSL/TLS są certyfikatami <span class="h-b">X.509</span> (stosowanymi w architekturze X.509) z tzw. rozszerzonym użyciem klucza (ang. _Extended Key Usage_). Czyli rozszerzeniem, które określa cel użycia certyfikatu, np. do uwierzytelniania serwera czy uwierzytelniania klienta.
 
 <p align="center">
   <img src="/assets/img/posts/extended_key_usage.png">
 </p>
 
+W celu uzyskania bardziej szczegółowych informacji odsyłam do [RFC 5280 - Extended Key Usage](https://tools.ietf.org/html/rfc5280#section-4.2.1.12).
+
 ## Certyfikat klienta
 
-Certyfikaty klienta, jak wskazuje nazwa, służą do identyfikacji klienta lub użytkownika (do sprawdzania jego tożsamości). Pozwalają one uwierzytelnić klienta i sprawdzić, a następnie potwierdzić jego tożsamości przed udzieleniem dostępu do serwera. Dzięki takiemu podejściu, jeśli użytkownik zażąda dostępu (np. do ssh, vpn, poczty czy strony), który ma uprawnienia i którego tożsamość została zweryfikowana, serwer wie, że rozmawia z uprawnionym podmiotem.
+Certyfikaty klienta służą do identyfikacji klienta lub użytkownika (do sprawdzania jego tożsamości). Pozwalają one uwierzytelnić klienta i sprawdzić, a następnie potwierdzić jego tożsamości przed udzieleniem dostępu do serwera. Dzięki takiemu podejściu, jeśli użytkownik zażąda dostępu (np. do ssh, vpn, poczty czy strony), który ma uprawnienia i którego tożsamość została zweryfikowana, serwer wie, że rozmawia z uprawnionym podmiotem.
 
 Użycie certyfikatu klienta rozwiązuje problem haseł, ponieważ tożsamość klienta lub użytkownika nie jest oceniana na podstawie tego, czy znają hasło, ale zależy to od używanych przez nich systemów. Czasami hasła nie są wystarczająco dobre. Często padamy ofiarą technik łamania haseł, takich jak ataki siłowe i keyloggery. Dlatego hasła nie są już wystarczające, gdy w grę wchodzą jakieś bardzo wrażliwe informacje.
 
