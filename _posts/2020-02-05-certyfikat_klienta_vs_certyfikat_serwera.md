@@ -10,11 +10,9 @@ favorite: false
 toc: true
 ---
 
-Certyfikaty są złożonym tematem i często nie są dobrze rozumiane. Dlatego w tym wpisie chciałbym poruszyć kwestię dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi.
+W tym krótkim wpisie chciałbym poruszyć kwestię certyfikatów, a dokładniej dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi, ponieważ uważam, że jest to dość złożony temat, który często nie jest dobrze rozumiany.
 
-Czym jednak są certyfikaty? Wyobrażam je sobie w następujący sposób: certyfikat jest pudełkiem, które zawiera klucz publiczny wraz z dodatkowymi specjalnymi informacjami, np. komu klucz został wydany, kto go podpisał i tak dalej. Oczywiście certyfikaty są przechowywane w postaci plików i najczęściej są potrzebne, aby zabezpieczyć dane oraz zweryfikować właściciela.
-
-Sam widzisz, że same w sobie zawierają wiele istotnych informacji, tj. informacje o urzędzie certyfikacji, który wydał certyfikat, podpis cyfrowy takiego urzędu, klucz publiczny czy datę ważności certyfikatu. Te informacje (tzw. pola) określają natomiast, do jakich zastosowań może zostać użyty dany certyfikat. Przejdźmy w takim razie dalej.
+Czym w takim razie są certyfikaty? Oczywiście certyfikaty są przechowywane w postaci plików i najczęściej są potrzebne, aby zabezpieczyć dane oraz zweryfikować właściciela. Jednak osobiście wyobrażam je sobie w następujący sposób: certyfikat jest pudełkiem, które zawiera klucz publiczny i oprócz tego kilka niezwykle ważnych i specjalnych informacji, tj. komu klucz został wydany, na jak długo, kto go podpisał, i tak dalej. Te informacje (tzw. pola) określają, do jakich zastosowań może zostać użyty dany certyfikat. Przejdźmy w takim razie dalej.
 
 ## Format X.509
 
