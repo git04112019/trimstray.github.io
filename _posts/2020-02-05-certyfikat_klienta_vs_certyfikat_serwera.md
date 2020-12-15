@@ -12,7 +12,17 @@ toc: true
 
 W tym krótkim wpisie chciałbym poruszyć kwestię certyfikatów, a dokładniej dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi, ponieważ uważam, że jest to dość złożony temat, który często nie jest dobrze rozumiany.
 
-Zacznijmy jednak od standardowego pytania: czym w takim razie są certyfikaty? Osobiście wyobrażam je sobie w następujący sposób: certyfikat jest pudełkiem, które zawiera klucz publiczny i oprócz tego kilka niezwykle ważnych i specjalnych informacji, tj. komu klucz został wydany, na jak długo, kto go podpisał, i tak dalej. Te informacje (tzw. pola) określają, do jakich zastosowań może zostać użyty dany certyfikat.
+Zacznijmy jednak od standardowego pytania: czym w takim razie są certyfikaty? Osobiście wyobrażam je sobie w następujący sposób: certyfikat jest monetą, która zawiera dwie części (dwie strony monety), tj. klucz publiczny oraz kilka niezwykle ważnych informacji, np. to, komu klucz został wydany, na jak długo, kto go podpisał, i tak dalej. Te informacje (tzw. pola) określają, do jakich zastosowań może zostać użyty dany certyfikat. Dzięki nim certyfikat potwierdza, czy jednostka jest właścicielem określonego klucza publicznego.
+
+Jednak troszeczkę bardziej technicznie wygląda to tak: certyfikat serwera zawiera informacje identyfikujące serwer, tj. nazwę zwyczajową, nazwę podmiotu itp. Taki certyfikat zawiera również klucz publiczny, do którego pasujący klucz prywatny jest przechowywany oddzielnie na serwerze. Widzimy, że klucz publiczny jest częścią asymetrycznej wymiany kluczy TLS. Spójrz poniżej co się dzieje podczas takiego procesu i jaką rolę pełni klucz publiczny:
+
+- klient łączy się z serwerem
+- serwer wysyła klientowi klucz publiczny
+- klient tworzy liczbę losową (nowy klucz) i szyfruje ją kluczem publicznym
+- serwer odszyfrowuje wiadomość za pomocą klucza prywatnego
+  - tylko tajny, prywatny klucz może odszyfrować wiadomości wysłane zaszyfrowane kluczem publicznym
+- serwer wysyła potwierdzenie do klienta, zaszyfrowane dwukierunkowym szyfrowaniem, czyli za pomocą takiego algorytmu, który pozwala odszyfrować i zaszyfrować dane tym samym kluczem
+ - następnie serwer i klient komunikują się z utworzonym kluczem przez pewien czas przed ponownym wygenerowaniem klucza
 
 ## Format X.509
 
