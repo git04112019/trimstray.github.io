@@ -24,6 +24,8 @@ Jednak troszeczkę bardziej technicznie wygląda to tak: certyfikat serwera zawi
 - serwer wysyła potwierdzenie do klienta, zaszyfrowane dwukierunkowym szyfrowaniem, czyli za pomocą takiego algorytmu, który pozwala odszyfrować i zaszyfrować dane tym samym kluczem
  - następnie serwer i klient komunikują się z utworzonym kluczem przez pewien czas przed ponownym wygenerowaniem klucza
 
+Tyle informacji na początek wystarczy. Możemy w takim razie przejść do dalszej części artykułu.
+
 ## Format X.509
 
 Oba z wymienionych certyfikatów są certyfikatami cyfrowymi, opartymi na formacie <span class="h-b">X.509</span>, wykorzystywanymi w celu potwierdzenia zgodności oraz weryfikacji tożsamości danego podmiotu (np. certyfikat serwera potwierdza tożsamość serwera). Zwykle sam certyfikat jest podpisywany przez urząd certyfikacji (CA) przy użyciu klucza prywatnego CA. To weryfikuje autentyczność certyfikatu.
