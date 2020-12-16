@@ -12,23 +12,7 @@ toc: true
 
 W tym krótkim wpisie chciałbym poruszyć kwestię certyfikatów, a dokładniej dwóch rodzajów certyfikatów, tj. certyfikatu klienta oraz certyfikatu serwera, a także wyjaśnić różnice między nimi, ponieważ uważam, że jest to dość złożony temat, który często nie jest dobrze rozumiany.
 
-Zacznijmy jednak od standardowego pytania: czym w takim razie są certyfikaty? Osobiście wyobrażam je sobie w następujący sposób: certyfikat jest monetą, która zawiera dwie części (dwie strony monety), tj. klucz publiczny oraz kilka niezwykle ważnych informacji, np. to, komu klucz został wydany, na jak długo, kto go podpisał, i tak dalej. Te informacje (tzw. pola) określają, do jakich zastosowań może zostać użyty dany certyfikat. Dzięki nim certyfikat potwierdza, czy jednostka jest właścicielem określonego klucza publicznego.
-
-Jednak troszeczkę bardziej technicznie wygląda to tak: certyfikat serwera zawiera informacje identyfikujące serwer, tj. nazwę zwyczajową, nazwę podmiotu itp. Taki certyfikat zawiera również klucz publiczny, do którego pasujący klucz prywatny jest przechowywany oddzielnie na serwerze. Widzimy, że klucz publiczny jest częścią asymetrycznej wymiany kluczy TLS. Spójrz poniżej co się dzieje podczas takiego procesu i jaką rolę pełni klucz publiczny:
-
-- klient łączy się z serwerem
-- serwer wysyła klientowi klucz publiczny
-- klient tworzy liczbę losową (nowy klucz) i szyfruje ją kluczem publicznym
-- serwer odszyfrowuje wiadomość za pomocą klucza prywatnego
-  - tylko tajny, prywatny klucz może odszyfrować wiadomości wysłane zaszyfrowane kluczem publicznym
-- serwer wysyła potwierdzenie do klienta, zaszyfrowane dwukierunkowym szyfrowaniem, czyli za pomocą takiego algorytmu, który pozwala odszyfrować i zaszyfrować dane tym samym kluczem
- - następnie serwer i klient komunikują się z utworzonym kluczem przez pewien czas przed ponownym wygenerowaniem klucza
-
-Tyle informacji na początek wystarczy. Możemy w takim razie przejść do dalszej części artykułu.
-
 ## Format X.509
-
-Oba z wymienionych certyfikatów są certyfikatami cyfrowymi, opartymi na formacie <span class="h-b">X.509</span>, wykorzystywanymi w celu potwierdzenia zgodności oraz weryfikacji tożsamości danego podmiotu (np. certyfikat serwera potwierdza tożsamość serwera). Zwykle sam certyfikat jest podpisywany przez urząd certyfikacji (CA) przy użyciu klucza prywatnego CA. To weryfikuje autentyczność certyfikatu.
 
 <span class="h-b">X.509</span> jest standardem, który definiuje format certyfikatów klucza publicznego, a także sposób weryfikacji tożsamości posiadacza certyfikatu oraz określa mapowanie kluczy publicznych na użytkownika, komputer lub usługę (np. domenę) — czyli pozwala bezpiecznie skojarzyć pary kluczy kryptograficznych z tożsamościami, takimi jak strony internetowe, osoby lub organizacje. Natomiast jednym z jego najważniejszych elementów są urzędy certyfikacji, które pełnią rolę zaufanej trzeciej strony w stosunku do podmiotów oraz użytkowników certyfikatów.
 
@@ -38,11 +22,9 @@ Jeżeli nie jest to dla Ciebie jasne, może wyobrazić sobie, że standard ten w
 - który użytkownik powinien przedstawić ten certyfikat?
 - której organizacji należy zaufać?
 
-Tak naprawdę, każdy certyfikat <span class="h-b">X.509</span> zawiera klucz publiczny, podpis cyfrowy oraz informacje o tożsamości skojarzonej z certyfikatem i wystawiającym go urzędem certyfikacji. Klucz publiczny jest częścią pary kluczy, która zawiera również klucz prywatny, który to musi być maksymalnie chroniony. Klucz publiczny jest natomiast zawarty w certyfikacie i może zostać udostępniony każdemu (stąd jest publiczny). Dzięki temu możliwe jest cyfrowe podpisywanie dokumentów (te podpisy może zweryfikować każdy, kto ma odpowiedni klucz publiczny), co pozwala stronom trzecim na wysyłanie wiadomości zaszyfrowanych za pomocą klucza publicznego, który może odszyfrować tylko właściciel klucza prywatnego.
+Wspomniałem przed chwilą, że klucz publiczny i skojarzone z nim dane atrybutów definiują certyfikat. Dzięki nim podmiot posiada specjalne informacje zdefiniowane m.in. przez standard <span class="h-b">X.509</span> (tak naprawdę całą rodzinę standardów określoną jako <span class="h-b">X.500</span>), które określają, komu lub czemu wydano certyfikat. Jednym z najważniejszych atrybutów, który jest wręcz kluczową i najprawdopodobniej najważniejszą częścią certyfikatu jest atrybuty podmiotu (ang. _subject attribute_). Atrybut podmiotu (lub inaczej temat) to ciąg znaków o odpowiednim typie, np. pole `C` określa kod kraju a pole `CN` określa nazwę domeny, dla której ma być wystawiony certyfikat SSL/TLS.
 
   > Sam klucz publiczny niekoniecznie jest z definicji certyfikatem. To klucz publiczny i skojarzone z nim dane atrybutów definiują certyfikat. Certyfikat zapewnia ustandaryzowany i bezpieczny format do komunikacji z określonymi systemami wraz z atrybutami pomagającymi sprawdzić zaufanie pary kluczy. Sposób budowania certyfikatów jest zdefiniowany właśnie w standardzie X.509.
-
-Wspomniałem przed chwilą, że klucz publiczny i skojarzone z nim dane atrybutów definiują certyfikat. Dzięki nim podmiot posiada specjalne informacje zdefiniowane m.in. przez standard <span class="h-b">X.509</span> (tak naprawdę całą rodzinę standardów określoną jako <span class="h-b">X.500</span>), które reprezentują, komu lub czemu wydano certyfikat. Jednym z najważniejszych atrybutów, który jest wręcz kluczową i najprawdopodobniej najważniejszą częścią certyfikatu jest atrybuty podmiotu (ang. _subject attribute_). Atrybut podmiotu (lub inaczej temat) to ciąg znaków o odpowiednim typie, np. pole `C` określa kod kraju a pole `CN` określa nazwę domeny, dla której ma być wystawiony certyfikat SSL/TLS.
 
 Co istotne w kontekście tego wpisu, certyfikaty SSL/TLS są certyfikatami <span class="h-b">X.509</span> (stosowanymi w architekturze X.509) z tzw. rozszerzonym użyciem klucza (ang. _Extended Key Usage_). Czyli rozszerzeniem, które określa cel użycia certyfikatu, np. do uwierzytelniania serwera czy uwierzytelniania klienta.
 
