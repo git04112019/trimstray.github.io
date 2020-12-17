@@ -13,6 +13,10 @@ last_modified_at: 2020-06-17 00:00:00 +0000
 
 W tym wpisie chciałbym wyjaśnić różnicę między tymi dwoma oznaczeniami. Wydawać by się mogło, że jest ona minimalna, a nawet kosmetyczna, no i faktycznie tak jest. Myślę, że może to być ciekawa dyskusja także na temat tego, jak system operacyjny powinien rozwiązywać nazwę lokalnego hosta, i czy w ogóle powinien oraz, której nazwy używać w plikach konfiguracyjnych usług uruchamianych na serwerze zwłaszcza do komunikacji wewnętrznej (i czy w ogóle umieszczać).
 
+<p align="center">
+  <img src="/assets/img/posts/localhost_loopback.png">
+</p>
+
 ## Czym jest interfejs loopback?
 
 Przed rozpoczęciem rozważań, warto wspomnieć, że oba terminy odnoszą się do specjalnego typu wirtualnego interfejsu, tzw. <span class="h-b">loopback</span>. Interfejs ten jest częścią stosu TCP/IP i emuluje prawdziwy interfejs, stąd jest interfejsem wirtualnym traktowanym jako fikcyjne urządzenie (ang. _dummy device_) i zapewnia wymianę danych wewnątrz jednego hosta celem utrzymania ruchu w warstwie interfejsu. Mimo tego, że jest to pseudourządzenie, to stos sieciowy nadal wykonuje na nim wiele „standardowych” operacji.
