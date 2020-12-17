@@ -43,7 +43,7 @@ Co więcej, parametr określający maksymalny czas, przez jaki komunikacja będz
 
 Jeżeli chcemy ustawić ten nagłówek z poziomu serwera NGINX, należy pamiętać o ustawieniu go w bloku `http` z opcją `ssl` dla danej konfiguracji nasłuchiwania — w przeciwnym razie ryzykujesz wysłanie nagłówka <span class="h-b">Strict-Transport-Security</span> przez połączenie HTTP, które również mogłeś skonfigurować w innym bloku konfiguracji. Dodatkowo powinieneś użyć przekierowania 301 za pomocą `return 301`, aby blok serwera HTTP został przekierowany do HTTPS.
 
-Dla HSTS nagłówek powinien wyglądać tak:
+Oto zalecana konfiguracja nagłówka HSTS w przypadku serwera NGINX (31536000 = 1 rok, 63072000 = 2 lata):
 
 ```nginx
 add_header Strict-Transport-Security "max-age=63072000; includeSubdomains" always;
