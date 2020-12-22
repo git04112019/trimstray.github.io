@@ -27,7 +27,7 @@ location /login {
 
   > Pamiętaj, że dyrektywa `deny` zawsze zwróci kod błędu _403 Forbidden_, odnoszący się do klienta uzyskującego dostęp, który nie jest upoważniony do wykonania danego żądania. Został on zdefiniowany w [RFC 7231](https://tools.ietf.org/html/rfc7231#section-6.5.3) <sup>[IETF]</sup> i dokładnie oznacza, że serwer, który przyjął żądanie, w pełni je rozumie jednak odmawia autoryzacji.
 
-Czy stosowanie powyższych dyrektyw może rodzić jakieś negatywne konsekwencje? Zdecydowanie tak: obie dyrektywy mogą działać wbrew oczekiwaniom, zwłaszcza, łącząc je z mechanizmem przepisywania dostarczanym przez serwer NGINX. Taka konfiguracja może być jednak dosyć specyficzna i możliwe, że nigdy z niej nie skorzystasz, chyba że zamiast odpowiedzi bezpośrednio do klienta przekierujesz ruch w inne miejsce.
+Czy stosowanie powyższych dyrektyw może rodzić jakieś negatywne konsekwencje? Zdecydowanie tak: obie dyrektywy mogą działać wbrew oczekiwaniom, zwłaszcza, łącząc je z mechanizmem przepisywania dostarczanym przez serwer NGINX. Taka konfiguracja może być jednak dosyć specyficzna i możliwe, że nigdy z niej nie skorzystasz, chyba że zamiast odpowiedzi bezpośrednio do klienta przekierujesz ruch w inne miejsce. Więcej na ten temat poczytasz na blogu OpenResty w rozdziale [Nginx directive execution order (03)](https://openresty.org/download/agentzh-nginx-tutorials-en.html#02-nginxdirectiveexecorder03), w którym niezwykle dokładnie opisano cały przypadek.
 
 Wracając do problemu, spójrz na poniższy przykład:
 

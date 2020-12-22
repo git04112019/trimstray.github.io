@@ -297,7 +297,7 @@ A oto niektóre z rezultatów:
 
 Na tym temat moglibyśmy zakończyć jednak jest jeszcze jedna niezwykle istotna rzecz warta wspomnienia — fazy przetwarzania żądań HTTP.
 
-Otóż idąc za [oficjalną dokumentacją](http://nginx.org/en/docs/dev/development_guide.html#http_phases), każde żądanie HTTP przechodzi przez sekwencję faz gdzie w każdej fazie wykonywany jest inny rodzaj przetwarzania żądania. Fazy są przetwarzane sukcesywnie, a odpowiednie metody obsługi faz są wywoływane, gdy żądanie dotrze do danej fazy. Poniżej znajduje się lista faz HTTP:
+Otóż idąc za [oficjalną dokumentacją](http://nginx.org/en/docs/dev/development_guide.html#http_phases), każde żądanie HTTP przechodzi przez sekwencję faz gdzie w każdej fazie wykonywany jest inny rodzaj przetwarzania żądania. Fazy są przetwarzane jedna po drugiej, a odpowiednie metody obsługi faz są wywoływane, gdy żądanie dotrze do danej fazy. Poniżej znajduje się lista faz HTTP:
 
 - <span class="h-a">NGX_HTTP_POST_READ_PHASE</span> - pierwsza faza, w której czytany jest nagłówek żądania
   - przykładowe moduły: <span class="h-b">ngx_http_realip_module</span>
@@ -331,18 +331,30 @@ Otóż idąc za [oficjalną dokumentacją](http://nginx.org/en/docs/dev/developm
 - <span class="h-a">NGX_HTTP_LOG_PHASE</span> - mechanizm logowania, tj. zapisywanie informacji do pliku z logami
   - przykładowe moduły: <span class="h-b">ngx_http_log_module</span>
 
+Zrozumienie ich jest niezwykle istotne, ponieważ w języku NGINX kolejność pisania w pliku konfiguracyjnym może znacznie różnić się od kolejności wykonywania na ogólnej osi czasu przetwarzania, co zwykle dezorientuje wielu administratorów.
+
+Zwykle moduły i ich polecenia rejestrują swoje wykonanie tylko w jednej z trzech faz: <span class="h-b">rewrite</span>, <span class="h-b">access</span> i <span class="h-b">content</span>. Na przykład dyrektywa `set` działa w fazie przepisywania, a polecenie `echo` działa w fazie treści. Ponieważ pierwsza z wymienionych występuje zawsze przed fazą <span class="h-b">content</span>, polecenia i dyrektywy w niej zawarte są również wykonywane wcześniej. Dlatego polecenie `set` zawsze jest wykonywane przed poleceniem „podłączonym” do fazy treści w ramach jednej dyrektywy `location`, niezależnie od kolejności ich wystąpienia w konfiguracji.
+
+Co istotne, polecenia w różnych fazach nie mogą być wykonywane w tę i z powrotem a dwa, nie każde polecenie ma odpowiednią fazę. Przykładami są dyrektywy `geo` i `map`. Te polecenia, które nie mają wyraźnie stosowanej fazy, są deklaratywne i niezwiązane z koncepcją kolejności wykonywania. Inną ciekawą rzeczą jest to, że polecenia różnych modułów są wykonywane niezależnie od siebie, nawet jeśli wszystkie są zarejestrowane w tej samej fazie (wyjątkiem jest moduł `ngx_set_misc`, którego polecenia są specjalnie dostrojone za pomocą modułu `ngx_rewrite`, tak, aby były wykonane na samym końcu). Innymi słowy, każda faza przetwarzania jest dalej dzielona na mniejsze fazy przez moduły serwera NGINX.
+
+  > Aby podejrzeć, w jakiej fazie wykonywane są konkretne polecenia, możesz wykorzystać tryb `debug` (należy go włączyć podczas kompilacji).
+
 Przygotowałem również proste wyjaśnienie, które pomoże ci zrozumieć, jakie moduły oraz dyrektywy są używane na każdym etapie:
 
 <p align="center">
   <img src="/assets/img/posts/nginx_phases.png">
 </p>
 
-Dodatkowo każda z faz ma listę powiązanych z nią procedur obsługi. Co więcej, na każdej fazie można zarejestrować dowolną liczbę handlerów.
+Dodatkowo każda z faz ma listę powiązanych z nią procedur obsługi. Co więcej, na każdej fazie można zarejestrować dowolną liczbę handlerów. Na przykład pisząc własny moduł w Lua możesz umieścić go w różnych fazach działania serwera, aby spełnić różne wymagania.
 
   > Polecam zapoznać się ze świetnym wyjaśnieniem dotyczącym [faz przetwarzania żądań](http://scm.zoomquiet.top/data/20120312173425/index.html). Dodatkowo, w tym [oficjalnym przewodniku](http://nginx.org/en/docs/dev/development_guide.html) także dość dokładnie opisano cały proces przejścia żądania przez każdą z faz.
 
-Na koniec znajduje się znacznie prostszy podgląd, który pomoże zrozumieć przetwarzanie żądań:
+Wracając jeszcze do wspomnianego przed chwilą kontekstu lokalizacji, to wszystkie polecenia ustawione w tym kontekscie są wykonywane w fazie przepisywania. W rzeczywistości prawie wszystkie polecenia implementowane przez przepisywanie są wykonywane w fazie przepisywania w określonym kontekście. Należy jednak mieć świadomość, że gdy niektóre polecenia zostaną znalezione w dyrektywie `server`, zostaną wykonane we wcześniejszej fazie, tj. w fazie przepisywania serwera.
+
+Poniżej znajduje się znacznie prostszy podgląd, który pomoże zrozumieć omawiany temat:
 
 <p align="center">
   <img src="/assets/img/posts/request-flow.png">
 </p>
+
+Polecam przeczytać świetne wyjaśnienie na temat [faz przetwarzania żądań HTTP w NGINX](http://scm.zoomquiet.top/data/20120312173425/index.html) i oczywiście [oficjalny przewodnik](http://nginx.org/en/docs/dev/development_guide.html) dla developerów. Na koniec, koniecznie zapoznaj się z artykułem [agentzh's Nginx Tutorials (version 2020.03.19)](https://openresty.org/download/agentzh-nginx-tutorials-en.html#02-nginxdirectiveexecorder03), który w świetny sposób wyjaśnia jak działają fazy przetwarzania serwera NGINX podająć przy okazji wiele pomocnych przykładów.
