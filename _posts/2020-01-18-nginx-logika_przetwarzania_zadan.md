@@ -292,3 +292,57 @@ A oto niektóre z rezultatów:
 | `/static5/logo.png` | <sup>1)</sup> prefix match for `/`<br><sup>2)</sup> case insensitive regex match for `.(png\|ico\|gif\|xcf)$` | `.(png\|ico\|gif\|xcf)$` |
 | `/static5/logo.xcf` | <sup>1)</sup> prefix match for `/`<br><sup>2)</sup> case sensitive regex match for `logo.xcf$` | `logo.xcf$` |
 | `/static5/logo.ico` | <sup>1)</sup> prefix match for `/`<br><sup>2)</sup> case insensitive regex match for `.(png\|ico\|gif\|xcf)$` | `.(png\|ico\|gif\|xcf)$` |
+
+## Fazy przetwarzania żądań
+
+Na tym temat moglibyśmy zakończyć jednak jest jeszcze jedna niezwykle istotna rzecz warta wspomnienia — fazy przetwarzania żądań HTTP.
+
+Otóż idąc za [oficjalną dokumentacją](http://nginx.org/en/docs/dev/development_guide.html#http_phases), każde żądanie HTTP przechodzi przez sekwencję faz gdzie w każdej fazie wykonywany jest inny rodzaj przetwarzania żądania. Fazy są przetwarzane sukcesywnie, a odpowiednie metody obsługi faz są wywoływane, gdy żądanie dotrze do danej fazy. Poniżej znajduje się lista faz HTTP:
+
+- <span class="h-a">NGX_HTTP_POST_READ_PHASE</span> - pierwsza faza, w której czytany jest nagłówek żądania
+  - przykładowe moduły: <span class="h-b">ngx_http_realip_module</span>
+
+- <span class="h-a">NGX_HTTP_SERVER_REWRITE_PHASE</span> - implementacja dyrektyw przepisywania zdefiniowanych w bloku serwera; w tej fazie m.in. zmieniany jest identyfikator URI żądania za pomocą wyrażeń regularnych (PCRE)
+  - przykładowe moduły: <span class="h-b">ngx_http_rewrite_module</span>
+
+- <span class="h-a">NGX_HTTP_FIND_CONFIG_PHASE</span> - zamieniana jest lokalizacja zgodnie z URI (wyszukiwanie lokalizacji)
+
+- <span class="h-a">NGX_HTTP_REWRITE_PHASE</span> - modyfikacja URI na poziomie lokalizacji
+  - przykładowe moduły: <span class="h-b">ngx_http_rewrite_module</span>
+
+- <span class="h-a">NGX_HTTP_POST_REWRITE_PHASE</span> - przetwarzanie końcowe URI (żądanie zostaje przekierowane do nowej lokalizacji)
+  - przykładowe moduły: <span class="h-b">ngx_http_rewrite_module</span>
+
+- <span class="h-a">NGX_HTTP_PREACCESS_PHASE</span> - wstępne przetwarzanie uwierzytelniania; sprawdzane są m.in. limity żądań oraz limity połączeń (ograniczenie dostępu)
+  - przykładowe moduły: <span class="h-b">ngx_http_limit_req_module</span>, <span class="h-b">ngx_http_limit_conn_module</span>, <span class="h-b">ngx_http_realip_module</span>
+
+- <span class="h-a">NGX_HTTP_ACCESS_PHASE</span> - weryfikacja klienta (proces uwierzytelnienia, ograniczenie dostępu)
+  - przykładowe moduły: <span class="h-b">ngx_http_access_module</span>, <span class="h-b">ngx_http_auth_basic_module</span>
+
+- <span class="h-a">NGX_HTTP_POST_ACCESS_PHASE</span> - faza przetwarzania końcowego związana z ograniczaniem dostępu
+  - przykładowe moduły: <span class="h-b">ngx_http_access_module</span>, <span class="h-b">ngx_http_auth_basic_module</span>
+
+- <span class="h-a">NGX_HTTP_PRECONTENT_PHASE</span> - generowanie treści (odpowiedzi)
+  - przykładowe moduły: <span class="h-b">ngx_http_try_files_module</span>
+
+- <span class="h-a">NGX_HTTP_CONTENT_PHASE</span> - przetwarzanie treści (odpowiedzi)
+  - przykładowe moduły: <span class="h-b">ngx_http_index_module</span>, <span class="h-b">ngx_http_autoindex_module</span>, <span class="h-b">ngx_http_gzip_module</span>
+
+- <span class="h-a">NGX_HTTP_LOG_PHASE</span> - mechanizm logowania, tj. zapisywanie informacji do pliku z logami
+  - przykładowe moduły: <span class="h-b">ngx_http_log_module</span>
+
+Przygotowałem również proste wyjaśnienie, które pomoże ci zrozumieć, jakie moduły oraz dyrektywy są używane na każdym etapie:
+
+<p align="center">
+  <img src="/assets/img/posts/nginx_phases.png">
+</p>
+
+Dodatkowo każda z faz ma listę powiązanych z nią procedur obsługi. Co więcej, na każdej fazie można zarejestrować dowolną liczbę handlerów.
+
+  > Polecam zapoznać się ze świetnym wyjaśnieniem dotyczącym [faz przetwarzania żądań](http://scm.zoomquiet.top/data/20120312173425/index.html). Dodatkowo, w tym [oficjalnym przewodniku](http://nginx.org/en/docs/dev/development_guide.html) także dość dokładnie opisano cały proces przejścia żądania przez każdą z faz.
+
+Na koniec znajduje się znacznie prostszy podgląd, który pomoże zrozumieć przetwarzanie żądań:
+
+<p align="center">
+  <img src="/assets/img/posts/request-flow.png">
+</p>
