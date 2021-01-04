@@ -19,11 +19,13 @@ Celem wymiany kluczy Diffie-Hellman (DHKE) jest uzyskanie przez obie strony komu
 
 Jak już wspomniałem, DH jest używany do generowania publicznego wspólnego sekretu w celu późniejszego wykorzystania symetrycznego klucza prywatnego do faktycznego szyfrowania danych. Dokładny opis działania algorytmu DH znajdziesz w artykule [What is the Diffie–Hellman key exchange and how does it work?](https://www.comparitech.com/blog/information-security/diffie-hellman-key-exchange/).
 
-Co istotne, podstawa matematyczna tego algorytmu opiera się albo na liczbach pierwszych, albo na krzywych eliptycznych. Co więcej, znalezienie takich liczb pierwszych jest naprawdę intensywne obliczeniowo i nie można sobie na nie pozwolić przy każdym połączeniu, więc są one wstępnie obliczane (ustawiane z poziomu serwera HTTP). W przypadku serwera NGINX ustawiamy je za pomocą dyrektywy `ssl_dhparam`.
+Co istotne, algorytm ten występuje w dwóch odmianach. Generalnie zasada działania jest taka sama, a różnica między nimi polega głównie na grupie, która jest wybierana do obliczania tajnych kluczy (w której wykonywane są obliczenia). Algorytm ten może być oparty na liczbach pierwszych (DH) i wykorzystuje arytmetykę modularną liczb całkowitych o module wyrażającym się dużą liczbą pierwszą, która wymagana jest do obliczania wspólnego sekretu, albo wykorzystuje kryptografię krzywych eliptycznych (ECDH), której podstawą jest grupa punktów na krzywej eliptycznej.
 
-Należy także wiedzieć, że w idealnym przypadku Diffie-Hellman powinien być używany w połączeniu z uznaną metodą uwierzytelniania (RSA/ECC), taką jak podpisy cyfrowe, w celu weryfikacji tożsamości.
+Co więcej, w przypadku „zwykłego” algorytmu DH, którego dotyczy opisywany problem, znalezienie takich liczb pierwszych jest naprawdę intensywne obliczeniowo i nie można sobie na nie pozwolić przy każdym połączeniu. Rozwiązaniem jest ich wstępne obliczanie i ustawienie z poziomu serwera HTTP. W przypadku serwera NGINX możemy to zrobić za pomocą dyrektywy `ssl_dhparam`.
 
   > Ciekawostką jest, że w rzeczywistości parametry te są wysyłane przez sieć publiczną (mogą być dostępne publicznie) przy każdej wymianie kluczy Diffie-Hellman (DH).
+
+Należy także wiedzieć, że w idealnym przypadku Diffie-Hellman powinien być używany w połączeniu z uznaną metodą uwierzytelniania (RSA/ECC), taką jak podpisy cyfrowe, w celu weryfikacji tożsamości.
 
 Parametry te określają sposób, w jaki biblioteka OpenSSL wykonuje wymianę kluczy Diffie-Hellman (DH). Z matematycznego punktu widzenia, zawierają one najczęściej liczbę pierwszą <span class="h-b">p</span> i generator <span class="h-b">g</span>. Większe <span class="h-b">p</span> znacznie utrudni znalezienie wspólnego i tajnego klucza <span class="h-b">K</span>, chroniąc przed atakami pasywnymi.
 
@@ -66,7 +68,7 @@ Należy pamiętać, że parametry DH są wykorzystywane tylko w przypadku stosow
 
 ## Wyeliminowanie podatności
 
-Pierwszym i najważniejszym z rozwiązań jest aktualizacja serwera NGINX do wersji, w której wyeliminowano podatność. Drugim z zalecanych rozwiązań jest wykluczenie szyfrów DHE (obecnie przeglądarki praktycznie ich nie wykorzystują) i wskazanie tylko tych korzystających z krzywych eliptycznych w postaci efemerycznej, tj. ECDHE. Częściowym rozwiązaniem jest jasne wskazanie „bezpiecznych/zalecanych” parametrów DH o minimalnej długości 2048-bit:
+Bezapelacyjnie najważniejszym z rozwiązań jest aktualizacja serwera NGINX do wersji, w której wyeliminowano podatność. Drugim, wydaje mi się w miarę racjonalnym, jest wykluczenie szyfrów DHE (obecnie przeglądarki praktycznie ich nie wykorzystują) i wskazanie tylko tych korzystających z krzywych eliptycznych w postaci efemerycznej, tj. ECDHE. Częściowym rozwiązaniem jest jasne wskazanie „bezpiecznych/zalecanych” parametrów DH o minimalnej długości 2048-bit:
 
 ```nginx
 ssl_dhparam ffdhe2048.pem;      # zalecane (predefiniowane)

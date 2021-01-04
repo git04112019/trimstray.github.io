@@ -12,7 +12,7 @@ toc: true
 
 Jedną z najważniejszych czynności podczas konfiguracji TLS jest wybór odpowiednich zestawów szyfrów. Parametr ten zmienia się częściej niż inne, zalecana konfiguracja na dziś może być nieaktualna jutro.
 
-Omawiany w tym wpisie temat nie należy do najłatwiejszych ze względu na swoją złożoność. Pokazuje on dodatkowo, że konfiguracja TLS nie polega i nie powinna polegać na ustawieniu pewnych parametrów w ciemno (a co gorsza skopiowania ich z pierwszego lepszego źródła), tylko na przemyślanym, zweryfikowanym i racjonalnym (także jeśli chodzi o bezpieczeństwo) sposobie ich doboru. Dlatego do tematu należy podejść starannie, ponieważ wykorzystywane zestawy szyfrów w komunikacji są jedną z najistotniejszych rzeczy, które ją chronią.
+Omawiany w tym wpisie temat nie należy do najłatwiejszych ze względu na swoją złożoność. Pokazuje on dodatkowo, że konfiguracja TLS nie polega i nie powinna polegać na ustawieniu pewnych parametrów w ciemno (a co gorsza skopiowania ich z pierwszego lepszego źródła), tylko na przemyślanym, zweryfikowanym i racjonalnym (także jeśli chodzi o bezpieczeństwo) sposobie ich doboru. Dlatego do tematu dobrze jest podejść bardzo starannie, ponieważ wykorzystywane zestawy szyfrów w komunikacji są jedną z najistotniejszych rzeczy, które ją chronią.
 
 Jeśli druga strona komunikacji nie obsługuje pakietu szyfrów zgodnego z Twoimi standardami, a dodatkowo cenisz bezpieczeństwo tego połączenia, nie pozwól, aby Twój system działał z pakietami szyfrów niższej jakości.
 
@@ -350,7 +350,7 @@ Przy takiej konfiguracji pamiętaj o wykorzystaniu paremetrów DH o odpowiedniej
 
 ```nginx
 # Przykład konfiguracji dzięki której możliwe jest uzyskanie
-# maksymalnej oceny. Nie powinno się wskazywać (w NGINX jest to niemożliwe)
+# maksymalnej oceny. Nie trzeba wskazywać (w NGINX jest to niemożliwe)
 # zestawów szyfrów dla TLSv1.3, ponieważ robi to za Nas biblioteka OpenSSL.
 ssl_ciphers "TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-256-GCM-SHA384";
 ```
@@ -368,7 +368,7 @@ ssl_ciphers "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECD
 
 ```nginx
 # Przykład konfiguracji dzięki której możliwe jest uzyskanie
-# maksymalnej oceny. Nie powinno się wskazywać (w NGINX jest to niemożliwe)
+# maksymalnej oceny. Nie trzeba wskazywać (w NGINX jest to niemożliwe)
 # zestawów szyfrów dla TLSv1.3, ponieważ robi to za Nas biblioteka OpenSSL.
 ssl_ciphers "TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-256-GCM-SHA384:TLS13-AES-128-GCM-SHA256";
 ```
