@@ -19,7 +19,7 @@ Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każd
 
 To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie jak działa DNS i cały proces leżący u podstaw tego systemu a następnie omówimy dokładniej technikę sinkholingu.
 
-## Jak działa DNS?
+## Rozwiązywanie nazw
 
 DNS (ang. _Domain Name System_) jest jedną z kluczowych części komunikacji, która pozwala na konwertowanie nazw alfabetycznych na numeryczne adresy. Dzięki temu, mając odpowiednio skonfigurowany serwer DNS, jesteśmy w stanie odpytywać go np. o adresy IP domen, które przechowuje.
 
@@ -27,13 +27,21 @@ Sam proces rozwiązywania nazw (czyli właśnie np. zamiany nazwy na adres IP) o
 
 Jak dobrze wiemy, każdemu urządzeniu podłączonemu do sieci nadawany jest adres IP, który jest niezbędny do zlokalizowania go w sieci. Na przykład, gdy chcemy załadować stronę internetową znajdującą się na zdalnym serwerze, musi nastąpić tłumaczenie między tym, co wpisujemy w swojej przeglądarce (np. <span class="h-b">example.com</span>), a zrozumiałym dla urządzeń i protokołów adresem IP (np. 192.168.10.25) niezbędnym do zlokalizowania strony internetowej. Ten proces tłumaczenia ma kluczowe znaczenie dla ładowania każdej strony internetowej.
 
-### Proces rozwiązywania nazwy domenowej
+Omówmy w takim razie cały proces jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Wygląda on podobnie do poniższego diagramu w typowym systemie GNU/Linux:
 
-Omówmy w takim razie cały proces jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Sam mechanizm i wszystkie kroki od wpisania w przeglądarce nazwy do uzyskania adresu IP a w konsekwencji wyświetlenia danego zasoby jest niezwykle fascynujący.
+<p align="center">
+  <img src="/assets/img/posts/ns_resolution.png">
+</p>
 
-Wpisując w przeglądarce adres <span class="h-b">example.com</span> w pierwszej kolejności przeglądarka sprawdza, czy domena znajduje się w jej lokalnej pamięci podręcznej. Jeśli odwiedzałeś jakiś czas temu tę domenę, przeglądarka może już wiedzieć, jaki jest jej adres IP i mieć tę wartość w swoim lokalnym buforze.
+Sam mechanizm i wszystkie kroki od wpisania w przeglądarce nazwy do uzyskania adresu IP a w konsekwencji wyświetlenia danego zasoby jest niezwykle fascynujący.
+
+### Klient (przeglądarka)
+
+Wpisując np. w przeglądarce adres <span class="h-b">example.com</span> w pierwszej kolejności przeglądarka sprawdza, czy domena znajduje się w jej lokalnej pamięci podręcznej. Jeśli odwiedzałeś jakiś czas temu tę domenę, przeglądarka może już wiedzieć, jaki jest jej adres IP i mieć tę wartość w swoim lokalnym buforze.
 
 Pamięć podręczna przeglądarki zwykle przechowuje obiekty dosyć krótko a nie dłużej niż poprzez parametr czasu życiu (_ang. Time to Live_) — czyli adres jest przechowywany tak długo, jak został określony za pomocą tego parametru. Z drugiej strony, przeglądarki komunikują się z lokalnym resolverem więc TTL nie powinien mieć większego znaczenia. Po trzecie, przeglądarki posiadają wbudowane opcje, które sterują czasem życia rekordów, np. Firefox posiada parametry konfiguracyjne: <span class="h-b">network.dnsCacheExpiration</span> i <span class="h-b">network.dnsCacheExpirationGracePeriod</span> z domyślną wartością 60 sekund. Google Chrome i wbudowany wewnętrzny mechanizm rozpoznawania nazw DNS ignoruje TTL rekordów DNS i buforuje żądania DNS także przez 60 sekund.
+
+### GNU libc
 
 Przejdźmy dalej. Jeśli przeglądarka nie znajdzie odpowiedniego wpisu w swojej pamięci podręcznej, zacznie szukać dalej, aby przeprowadzić wyszukiwanie. I tutaj pojawia się kilka ciekawych kwestii.
 
@@ -51,7 +59,7 @@ O ile nie określono inaczej, funkcja <span class="h-b">gethostbyname</span> uż
 
   > `gethostbyname` sprawdza, czy nazwa hosta może być rozwiązana przez odniesienie w lokalnym pliku (którego lokalizacja różni się w zależności od systemu operacyjnego) przed podjęciem próby odpytania serwera DNS. Jeśli `gethostbyname` nie ma rekordu w pamięci podręcznej ani nie może go znaleźć w pliku `hosts`, wysyła żądanie do serwera DNS skonfigurowanego w stosie sieciowym najczęściej właśnie przez plik lokalnego resolwera. Zazwyczaj jest to router lokalny lub buforujący serwer DNS usługodawcy internetowego.
 
-Druga z funkcji, tj. `getaddrinfo` także służy do wyszukiwania DNS. Jest jednak znacznie bardziej zaawansowana (i bardziej przeładowana), ponieważ po drodze wywołuje znacznie więcej wywołań systemowych, tj. odczyt plików systemowych, ładowanie bibliotek czy otwieranie dodatkowych gniazd. Spójrz poniżej na statystyki ilości wywołań:
+Druga z funkcji, tj. <span class="h-b">getaddrinfo</span> także służy do wyszukiwania DNS. Jest jednak znacznie bardziej zaawansowana (i bardziej przeładowana), ponieważ po drodze wywołuje znacznie więcej wywołań systemowych, tj. odczyt plików systemowych, ładowanie bibliotek czy otwieranie dodatkowych gniazd. Spójrz poniżej na statystyki ilości wywołań:
 
 ```
 strace -c ./gethostbyname.out
@@ -105,20 +113,38 @@ strace -c ./getaddrinfo.out
 
 Oczywiście jest to przykład prostych programów napisanych w C odpytujących lokalnego hosta.
 
-Generalnie tuż przed żądaniem DNS proces wykonuje wywołania systemowe i, jeśli trzeba rozwiązań nazwę z serwera DNS, pobiera adres IP serwera z pliku `/etc/resolv.conf`. `getaddrinfo` pobiera informacje z `/etc/hosts`, czytając ten plik w całości za każdym razem, gdy wywołasz klienta.
+Generalnie tuż przed żądaniem DNS proces wykonuje wywołania systemowe i, jeśli trzeba rozwiązań nazwę z serwera DNS, pobiera adres IP serwera z pliku `/etc/resolv.conf`. <span class="h-b">getaddrinfo</span> pobiera informacje z `/etc/hosts`, czytając ten plik w całości za każdym razem, gdy wywołasz klienta.
 
-Co ciekawe, żaden z tych plików nie jest znany procesom tak po prostu. Taką wiedzę uzyskują one dopiero po załadowaniu specjalnych współdzielonych bibliotek w czasie swojego wykonywania. Na przykład wywołując obie funkcje w dystrybucji Debianopodobnej:
+Co niezwykle ciekawe, po uzyskaniu adresów IP przez tę funkcję, nie zwraca ona od razu odpowiedzi do klienta, tylko przeprowadza dodatkowo testy tych adresów, otwierając do nich gniazda i łącząc się z nimi:
+
+```
+socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
+connect(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.217.20.206")}, 16) = 0
+getsockname(3, {sa_family=AF_INET, sin_port=htons(48043), sin_addr=inet_addr("192.168.43.56")}, [28->16]) = 0
+close(3)                                = 0
+socket(AF_INET6, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
+connect(3, {sa_family=AF_INET6, sin6_port=htons(0), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2a00:1450:401b:805::200e", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+close(3)
+```
+
+Oraz nie buforuje odpowiedzi (ogólnie obie nie buforują, aby zapewnić taką funkcję można użyć demona nscd), więc kolejne połączenia także są dosyć kosztowne przy jej wykorzystaniu.
+
+Interesujące jest także to, że żaden z wymienionych wyżej plików nie jest znany procesom tak po prostu. Taką wiedzę uzyskują one dopiero po załadowaniu specjalnych współdzielonych bibliotek w czasie swojego wykonywania. Na przykład wywołując obie funkcje w dystrybucji Debianopodobnej:
 
 - `/etc/hosts` jest znany z poziomu `libnss_files.so.2`
 - `/etc/resolv.conf` jest znany z poziomu `libnss_dns.so.2`
 
-Aby jeszcze bardziej skomplikować sprawę, musimy mieć świadomość, że proces pobiera listę takich źródeł w czasie wykonywania z innego pliku, `/etc/nsswitch.conf`. Plik ten oczywiście przyjmuje różne wartości w zależności od systemu. Na przykład, w systemie FreeBSD 12.1 wygląda on tak:
+### nsswitch.conf
+
+Aby jeszcze bardziej skomplikować sprawę, musimy mieć świadomość, że proces pobiera listę takich źródeł w czasie wykonywania z innego pliku, tj. `/etc/nsswitch.conf`. Tak naprawdę GNU libc umożliwia skonfigurowanie kolejności, w jakiej funkcja czy proces, który z niej korzysta, próbuje uzyskać dostęp do usługi. Jest to kontrolowane właśnie przez plik `nsswitch.conf`. W przypadku dowolnej funkcji wyszukiwania obsługiwanej przez GNU libc plik ten zawiera wiersz z nazwami usług, które mają być używane.
+
+Jeżeli chodzi o mechanizm rozwiązywania nazw, plik ten oczywiście przyjmuje różne wartości w zależności od systemu. Na przykład, w systemie FreeBSD 12.1 wygląda on tak:
 
 ```
 hosts: files dns
 ```
 
-Co oznacza taki wpis? Mówi on, że aby znaleźć hosta najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. W dystrybucji CentOS 7.7.1908 wpis hosts w tym pliku wygląda następująco:
+Co oznacza taki wpis? Mówi on, że aby znaleźć hosta najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. W dystrybucji CentOS 7.7 wpis hosts w tym pliku wygląda następująco:
 
 ```
 hosts: files dns myhostname
@@ -126,19 +152,24 @@ hosts: files dns myhostname
 
 Jest on niezwykle podobny jednak posiada dodatkową wartość. W tym wypadku mówi on, że aby znaleźć hosta najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. Jeżeli obie próby zakończą się niepowodzeniem, odpytaj bibliotekę `libnss_myhostname.so`. Oczywiście w zależności od systemu czy dystrybucji wartości mogą znajdować się na innym miejscu.
 
+Widzimy, że z poziomu pliku `nsswitch.conf` możemy zmuszać funkcje <span class="h-b">gethostbyname</span> i <span class="h-b">getaddrinfo</span> do wypróbowywania każdej z wymienionych usług, np. do przeszukiwania serwera DNS przed plikiem `/etc/hosts`. Jeśli wyszukiwanie powiedzie się, zwracany jest wynik, w przeciwnym razie sprawdzona zostanie następna usługa z listy.
+
+Praktycznie w każdym systemie i dystrybucji plik `hosts` ma pierwszeństwo przed pozostałymi usługami. Informacje o nazwie hosta mogą się jednak zmieniać bardzo często, więc w niektórych sytuacjach serwer DNS powinien zawsze mieć najdokładniejsze dane, podczas gdy lokalny plik hostów traktowany jest jako kopia zapasowa tylko na wypadek awarii.
+
   > We wpisie hosts pliku `nsswitch.conf` może pojawić się jeszcze coś takiego jak mDNS. Jeżeli chcesz uzyskać więcej informacji na ten temat zerknij na odpowiedź [mDNS or Multicast DNS service](https://askubuntu.com/a/853284).
 
-Co niezwykle ciekawe, po uzyskaniu adresów IP przez tę funkcję, nie zwraca ona od razu odpowiedzi do klienta, tylko przeprowadza dodatkowo testy tych adresów, otwierając do nich gniazda i łącząc się z nimi:
+Wróćmy na chwilę do klientów i programów wykorzystujących omawiane funkcje. Mógłbyś pomyśleć: skoro każde z tych narzędzi uzyskuje ten sam wynik, więc na pewno wykorzystują te same mechanizmy. Tak naprawdę, różne programy uzyskują adres IP adresu na różne sposoby. Na przykład polecenie `ping` wykorzystuje mechanizm nsswitch, który z kolei może wykorzystać plik `/etc/hosts`, `/etc/resolv.conf` lub własnej nazwy hosta, aby uzyskać wynik.
 
-```
-socket(AF_INET, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
-connect(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("127.0.0.1")}, 16) = 0
-getsockname(3, {sa_family=AF_INET, sin_port=htons(43582), sin_addr=inet_addr("127.0.0.1")}, [28->16]) = 0
-close(3)                                = 0
-socket(AF_INET6, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
-connect(3, {sa_family=AF_INET6, sin6_port=htons(0), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "::1", &sin6_addr), sin6_scope_id=0}, 28) = 0
-getsockname(3, {sa_family=AF_INET6, sin6_port=htons(51323), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "::1", &sin6_addr), sin6_scope_id=0}, [28]) = 0
-close(3)
-```
+Nie wszystkie narzędzia wykorzystują taki oto sposób. Na przykład komenda `host` jest typowym poleceniem służącym do odpytywania serwerów DNS. Wykorzystuje ona plik `/etc/resolv.conf` do ustalenia, które serwery DNS odpytać w celu uzyskania nazwy szukanego hosta. Tak naprawdę większość programów odwołuje się do tego pliku (jeśli zajdzie taka potrzeba) przy określaniu, który serwer DNS należy wykorzystać.
 
-Oraz nie buforuje odpowiedzi (ogólnie obie nie buforują, aby zapewnić taką funkcję można użyć demona nscd), więc kolejne połączenia także są dosyć kosztowne przy jej wykorzystaniu.
+Podobnie sytuacja wygląda z narzędziem `nslookup` czy poleceniem `ping`. Pierwsze z nich wymusi wyszukiwanie DNS, podczas gdy `ping` będzie używać normalnej kolejności wyszukiwania nazw.
+
+### DNS Server
+
+Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy pozostaje ostatni krok, czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce domenę <span class="h-b">example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
+
+Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile nie wygasła). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny uruchomi procedurę odpytywania. W tym celu musi najpierw ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę.
+
+Jak wygląda ten proces? Pierwszym wysłanym zapytaniem będzie to, które dotyczy domeny głównego rzędu, tj. <span class="h-b">.</span> (root) aby znaleźć odpowiedni serwer dla domeny niższego rzędu, tj. <span class="h-b">.com</span>. Gdy uda się ustalić taki serwer, serwer DNS, który odpytywaliśmy, skomunikuje się z tym serwerem z ​​zapytaniem o serwer nazw, na przykład example.com
+
+jeśli ma adres na przykład serwery nazw example.com, wyśle ​​oryginalne zapytanie dla www.example.com do tego serwera i zwróci Ci odpowiedź (i umieści kopię w swojej pamięci podręcznej na wypadek, gdyby ktoś o to poprosił)
