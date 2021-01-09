@@ -166,10 +166,26 @@ Podobnie sytuacja wygląda z narzędziem `nslookup` czy poleceniem `ping`. Pierw
 
 ### DNS Server
 
-Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy pozostaje ostatni krok, czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce domenę <span class="h-b">example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
+Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy — pozostaje ostatni krok — czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce domenę <span class="h-b">example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
 
-Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile nie wygasła). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny uruchomi procedurę odpytywania. W tym celu musi najpierw ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę.
+Najczęściej takim serwerem jest serwer w sieci lokalnej (LAN). Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile taki wpis nie wygasł). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny, uruchomi procedurę odpytywania. W tym celu musi ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę.
 
-Jak wygląda ten proces? Pierwszym wysłanym zapytaniem będzie to, które dotyczy domeny głównego rzędu, tj. <span class="h-b">.</span> (root) aby znaleźć odpowiedni serwer dla domeny niższego rzędu, tj. <span class="h-b">.com</span>. Gdy uda się ustalić taki serwer, serwer DNS, który odpytywaliśmy, skomunikuje się z tym serwerem z ​​zapytaniem o serwer nazw, na przykład example.com
+Przed tym jednak lokalny serwer przekaże zapytanie do tzw. rekursywnego serwera DNS, często udostępnianego przez dostawcę usług internetowych (ISP). Rekursywny serwer DNS ma własną pamięć podręczną i jeśli ma adres IP, zwróci go do Ciebie. Jeśli nie, poprosi inny serwer DNS. Ponieważ pamięć podręczna serwera DNS zawiera tymczasowy magazyn rekordów DNS, będzie on szybko odpowiadał na żądania. Te serwery pamięci podręcznej DNS są nazywane nieautorytatywnymi serwerami DNS, ponieważ zapewniają rozwiązywanie żądań na podstawie wartości buforowanej uzyskanej z autorytatywnych serwerów DNS.
 
-jeśli ma adres na przykład serwery nazw example.com, wyśle ​​oryginalne zapytanie dla www.example.com do tego serwera i zwróci Ci odpowiedź (i umieści kopię w swojej pamięci podręcznej na wypadek, gdyby ktoś o to poprosił)
+Następnym etapem są serwery nazw TLD, w tym przypadku serwer nazw TLD dla adresów <span class="h-b">.com</span>. Te serwery nie mają adresu IP, którego potrzebujemy, ale mogą wysłać żądanie DNS we właściwym kierunku. Widzimy, że pierwszym wysłanym zapytaniem będzie to, które dotyczy domeny głównego rzędu, tj. <span class="h-b">.</span> (root) aby znaleźć odpowiedni serwer dla domeny niższego rzędu, tj. <span class="h-b">.com</span>. Gdy uda się ustalić taki serwer, serwer DNS, który odpytywaliśmy, skomunikuje się z tym serwerem z ​​zapytaniem o serwer nazw.
+
+To, co mają serwery nazw TLD, to lokalizacja autorytatywnego serwera nazw dla żądanej witryny. Autorytatywny serwer nazw odpowiada adresem IP dla <span class="h-b">example.com</span>, a rekursywny serwer DNS przechowuje go w lokalnej pamięci podręcznej DNS i zwraca adres do komputera.
+
+Jeśli ma adres na przykład serwery nazw example.com, wyśle ​​oryginalne zapytanie dla <span class="h-b">www.example.com</span> do tego serwera i zwróci Ci odpowiedź (i umieści kopię w swojej pamięci podręcznej na wypadek, gdyby ktoś o to poprosił)
+
+W internecie jest dużo komputerów, więc nie ma sensu umieszczać wszystkich zapisów w jednej dużej książce. Zamiast tego DNS jest podzielony na mniejsze książki lub domeny. Domeny mogą być bardzo duże, więc są dalej organizowane w mniejsze książki, zwane „strefami”. Żaden serwer DNS nie przechowuje wszystkich książek - byłoby to niepraktyczne.
+
+Autorytatywny serwer nazw to miejsce, w którym administratorzy zarządzają nazwami serwerów i adresami IP swoich domen. Ilekroć administrator DNS chce dodać, zmienić lub usunąć nazwę serwera lub adres IP, dokonuje zmiany na swoim autorytatywnym serwerze DNS (czasami nazywanym „głównym serwerem DNS”). Istnieją również „podrzędne” serwery DNS; te serwery DNS przechowują kopie rekordów DNS swoich stref i domen.
+
+Cały proces można podsumować poniższym diagramem:
+
+<p align="center">
+  <img src="/assets/img/posts/dns_hierarchy.png">
+</p>
+
+## Domain sinkholing
