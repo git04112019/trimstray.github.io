@@ -166,15 +166,21 @@ Nie wszystkie narzędzia wykorzystują taki oto sposób. Na przykład komenda `h
 
 Podobnie sytuacja wygląda z narzędziem `nslookup` czy poleceniem `ping`. Pierwsze z nich wymusi wyszukiwanie DNS, podczas gdy `ping` będzie używać normalnej kolejności wyszukiwania nazw.
 
-### DNS Server
+### Zewnętrzne serwery DNS
 
-Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy — pozostaje ostatni krok — czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce <span class="h-b">host1.b.example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
+Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy — pozostaje ostatni krok — czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce <span class="h-b">host1.b.example.com</span> mechanizmy systemu operacyjnego w pierwszej kolejności spróbują przeszukać pamięć podręczną DNS i wszelkie dostępne źródła zewnętrzne. W tym celu wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
 
-Jak już wiesz, w pierwszej kolejności odpytane zostaną serwery DNS ustawione w pliku `/etc/resolv.conf`. Mogą to być rekursywne serwery DNS, tj. Google (8.8.8.8, 8.8.4.4), lub CloudFlare (1.1.1.1, 1.0.0.1). Pełną listę publicznych serwerów DNS znajdziesz na przykład w [Public DNS Server List](https://public-dns.info/). Najczęściej jednak „najbliższym” serwerem jest serwer w sieci lokalnej, który jeśli nie posiada informacji o szukanej domenie, przekaże zapytanie do rekursywnego serwera DNS, często udostępnianego przez dostawcę usług internetowych (ISP). Tak naprawdę, kiedy twój system zapyta najbliższy z serwerów nazw, gdzie jest <span class="h-b">host1.b.example.com</span>, taki serwer przekaże żądanie do dowolnego miejsca, w którym może uzyskać odpowiedź.
+Rozwiązywanie nazwy nigdy nie opiera się na jednym serwerze DNS (chyba że buforuje on odpowiednie rekordy i jest w stanie zwrócić odpowiedź do klienta natychmiast) i jest to proces, w którym zaangażowanych jest kilka różnych typów serwerów DNS, tj. serwer główny DNS, serwer TLD DNS i autorytatywny serwer nazw, które muszą dostarczyć informacji, aby zakończyć wyszukiwanie. W przypadku buforowania jeden z tych serwerów może zapisać odpowiedź na zapytanie podczas poprzedniego wyszukiwania, a następnie dostarczyć ją z pamięci. Ostatecznie cały ten łańcuch serwerów DNS pozwala znaleźć adres IP domeny i zwrócić wynik go do klienta, aby mógł uzyskać dostęp do właściwej witryny internetowej.
+
+Jak już wiesz, w pierwszej kolejności odpytane zostaną serwery DNS ustawione w pliku `/etc/resolv.conf`. Mogą to być rekursywne serwery DNS, tj. Google (8.8.8.8, 8.8.4.4), lub CloudFlare (1.1.1.1, 1.0.0.1). Pełną listę publicznych serwerów DNS znajdziesz na przykład w [Public DNS Server List](https://public-dns.info/). Najczęściej jednak „najbliższym” serwerem jest serwer w sieci lokalnej, który jeśli nie posiada informacji o szukanej domenie, przekaże zapytanie do rekursywnego serwera DNS, często udostępnianego przez dostawcę usług internetowych (ISP). Tak naprawdę, kiedy twój system zapyta najbliższy z serwerów nazw o to, gdzie jest <span class="h-b">host1.b.example.com</span>, taki serwer przekaże żądanie do dowolnego miejsca, w którym może uzyskać odpowiedź. Jeśli jeden z serwerów posiada rekordy w pamięci podręcznej, natychmiast odpowie klientowi, nie przeszkadzając wszystkim pozostałym serwerom pośredniczącym, zaczynając od serwerów głównych.
 
 Rekursywny serwer DNS ma własną pamięć podręczną i jeśli zna adres IP szukanej domeny, zwróci go do Ciebie. Jeśli nie, poprosi inny serwer DNS o pomoc w znalezieniu serwera głównego dla domeny, z którą chcesz nawiązać połączenie i której adresu IP szukasz. Ponieważ pamięć podręczna serwera DNS zawiera tymczasowy magazyn rekordów DNS, będzie on bardzo szybko odpowiadał na żądania, co jest jedną z kluczowych funkcji tego typu serwerów DNS. Tego typu serwery są nazywane nieautorytatywnymi serwerami DNS, ponieważ zapewniają rozwiązywanie żądań na podstawie wartości buforowanej uzyskanej z autorytatywnych serwerów DNS.
 
-Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile taki wpis nie wygasł). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny, uruchomi dalszą procedurę odpytywania. W tym celu musi ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę (jest jej właścicielem).
+Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile taki wpis nie wygasł). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny, uruchomi dalszą procedurę odpytywania, np. gdy rekursywny serwer DNS usługodawcy internetowego nie może rozpoznać nazwy domeny, kontaktuje się (dlatego nazywamy je serwerami rekurencyjnymi) z innymi serwerami DNS, aby dostarczyć Ci wymaganych informacji. Każdy dostawca usług internetowych ma zazwyczaj dwa serwery DNS, w tym jeden pomocniczy, aby zapewnić maksymalną dostępność usługi.
+
+Zapytania DNS klienta są wysyłane rekurencyjnie, co oznacza, że ​​klient powinien otrzymać od dostawcy DNS błąd lub rozwiązany rekord. Serwery pośredniczące także nie powinny samodzielnie rozwiązywać łańcucha pośrednich serwerów DNS, ponieważ ich zadaniem jest przekazywanie zapytań dalej do serwera DNS, który obsługuje żądania klientów. W ten sposób usługi przekazywania zmniejszają obciążenie pośrednich serwerów DNS i odpowiadają klientom tak szybko, jak to możliwe, ponieważ serwery DNS dostawców są bliżej klientów.
+
+W tym celu musi ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę (jest jej właścicielem).
 
   > Autorytatywny serwer nazw to miejsce, w którym administratorzy zarządzają nazwami serwerów i adresami IP swoich domen. Ilekroć administrator DNS chce dodać, zmienić lub usunąć nazwę serwera lub adres IP, dokonuje zmiany na swoim autorytatywnym serwerze DNS. Istnieją również „podrzędne” serwery DNS, czyli takie, które przechowują kopie rekordów DNS swoich stref i domen.
 
@@ -194,10 +200,44 @@ Te serwery nie mają adresu IP, którego potrzebujemy, ale mogą wysłać żąda
 
 Główny serwer nazw domeny odpowiada adresem serwera TLD. Następnie rekursywny serwer DNS pyta autorytatywny serwer TLD, gdzie może znaleźć autorytatywny serwer DNS dla <span class="h-b">host1.b.example.com</span>. Autorytatywny serwer TLD odpowiada i proces jest kontynuowany. Autorytatywny serwer <span class="h-b">host1.b.example.com</span> jest pytany, gdzie znaleźć <span class="h-b">host1.b.example.com</span>, a serwer odpowiada z odpowiedzią. Gdy rekursywny serwer DNS zna adres IP witryny sieci Web, odpowiada komputerowi, podając odpowiedni adres IP. Twoja przeglądarka ładuje stronę i możesz rozpocząć jej przeglądanie.
 
-Cały proces można podsumować poniższym diagramem:
+<p align="center">
+  <img src="/assets/img/posts/dns_hierarchy_step_by_step.png">
+</p>
+
+Podsumowując, gdy klient DNS wysyła takie żądanie, pierwszy odpowiadający serwer nie podaje potrzebnego adresu IP. Zamiast tego kieruje żądanie do innego serwera, który znajduje się niżej w hierarchii DNS, a ten do innego, dopóki adres IP nie zostanie w pełni rozwiązany. Proces ten ma kilka istotnych rzeczy:
+
+- serwery główne (ang. _Root DNS Servers_) - ten typ serwerów nie mapuje adresów IP na nazwy domen. Zamiast tego przechowuje informacje o wszystkich serwerach nazw domen najwyższego poziomu (TLD) i zajmują się one jedynie wskazywaniem ich lokalizacji. TLD to skrajna prawa sekcja nazwy domeny, na przykład <span class="h-b">.com</span> w przypadku <span class="h-b">example.com</span> lub <span class="h-b">.org</span> w przypadku <span class="h-b">example.org</span>. Serwery główne są krytyczne, ponieważ są pierwszym przystankiem dla wszystkich żądań wyszukiwania DNS
+
+- serwery nazw TLD (ang. _Top Level Domain DNS Servers_)- ten typ serwerów zawiera dane z domen drugiego poziomu, takich jak <span class="h-b">example</span> dla <span class="h-b">example.com</span>. Wcześniej serwer główny wskazywał lokalizację serwera TLD, a następnie taki serwer kieruje żądanie do serwera zawierającego niezbędne dane dotycząca domeny
+
+- autorytatywny serwer nazw (ang. _Authoritative DNS Server_) - ten typ serwera DNS jest ostatecznym miejscem docelowym dla żądań wyszukiwania DNS. Dostarcza on adres IP domeny z powrotem do rekurencyjnych serwerów DNS, a następnie do klienta (przy okazji rekord dla tego żądania jest teraz przechowywany w pamięci podręcznej serwera rekursywnego oraz klienta tj. przeglądarki internetowej). Jeśli witryna ma subdomeny, lokalny serwer DNS będzie wysyłać żądania do autorytatywnego serwera, aż ostatecznie ustali adres IP
+
+Cały proces można zobrazować na poniższym diagramie:
 
 <p align="center">
   <img src="/assets/img/posts/dns_hierarchy.png">
 </p>
 
 ## Domain sinkholing
+
+Przypomnieliśmy sobie, czym jest i jak działa system rozwiązywania nazw. Z racji tego, że usługa ta jest podstawową i wręcz krytyczną usługą używaną do uzyskiwania dostępu do Internetu, istotne jest jej kontrolowanie. Na przykład przechwytując wychodzące żądania DNS próbujące uzyskać dostęp do znanych złośliwych domen lub choćby w pełni legalnych witryn zawierających jednak złośliwe reklamy, organizacja może kontrolować odpowiedź i uniemożliwić komputerom organizacji łączenie się z tymi domenami. Ta aktywność zapobiega niechcianej komunikacji i jest w stanie złagodzić znane i nieznane zagrożenia hostowane w znanych złośliwych lub niechcianych domenach.
+
+<p align="center">
+  <img src="/assets/img/posts/dns_flow_without_sinkholing.png">
+</p>
+
+Tutaj do akcji wkracza mechanizm DNS Sinkholing mający na celu ochronę użytkowników poprzez przechwytywanie żądań DNS próbujących połączyć się ze znanymi złośliwymi lub niechcianymi domenami i zwracanie fałszywego, lub raczej kontrolowanego adresu IP. Widzisz, że tak skonfigurowany serwer przechwytuje żądania DNS klienta do znanych złośliwych witryn, odpowiadając za pomocą adresu IP, który kontrolujesz, zamiast prawdziwego ich adresu, dzięki czemu klient kierowany jest w bezpieczne miejsce. Kontrolowany adres IP wskazuje najczęściej na serwer zdefiniowany i będący pod kontrolą administratora.
+
+<p align="center">
+  <img src="/assets/img/posts/dns_flow_with_sinkholing.png">
+</p>
+
+Jest to niezwykle potężna technika ograniczania ataków botów, poprzez blokowanie komunikacji między serwerem C&C (ang. _Command and Control_) a nimi. Jeśli komputer zombie wysyła zapytanie DNS do naszego serwera DNS w celu komunikacji z jego serwerem C&C, nasz serwer DNS, który zawiera czarną listę domen serwerów C&C, zwraca adres IP naszego specjalnego serwera. W rezultacie, ponieważ komputer zombie próbuje komunikować się z naszym serwerem, nie może komunikować się ze swoim serwerem C&C. Z drugiej strony istnieje wiele cyberataków powodowanych przez złośliwe adresy URL zawarte w wiadomościach spam. Dlatego też, jeśli wyodrębnimy złośliwe adresy URL z tego typu wiadomości i zastosujemy je do techniki sinkholingu DNS, wiele ataków opartych na spamie może zostać zablokowanych.
+
+Dzięki systemowi lejów DNS wykorzystującym nową czarną listę domen będziemy w stanie wcześnie wykrywać i blokować najnowsze złośliwe zachowania w Internecie.
+
+Technikę tę można wykorzystać do zapobiegania łączeniu się hostów lub komunikowaniu się ze znanymi złośliwymi miejscami docelowymi, takimi jak serwer C&C botnetu (łącze do Infonote). Serwer Sinkhole może być używany do zbierania dzienników zdarzeń, ale w takich przypadkach administrator Sinkhole musi zapewnić, że wszystkie rejestracje są wykonywane w ramach ich prawnych granic i że nie ma naruszenia prywatności.
+
+Przydatne zasoby:
+
+- [SANS Institute - DNS Sinkhole]({{ site.url }}/assets/pdfs/dns-sinkhole-33523.pdf) <sup>[PDF]</sup>
