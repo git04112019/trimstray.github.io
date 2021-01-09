@@ -11,23 +11,23 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw (mam nadzieję, że nie jest to zbytnie nadużycie) jakim jest DNS.
+W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw (mam nadzieję, że nie jest to zbytnie nadużycie), jakim jest DNS.
 
 Technika DNS Sinkholing (ang. _sinkhole_ - lej) lub DNS Blackholing (ang. _blackhole_ - czarna dziura) jest używana do fałszowania wyników zwracanych z serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany adres IP. Gdy użytkownik próbuje uzyskać dostęp do sinkholowanej domeny może zostać mu zwrócony zasób z informacjami opisującymi ograniczenia lub może być skierowany do specjalnego miejsca w sieci lokalnej tak, aby zapobiec wejścia na zainfekowaną domenę/stronę.
 
 Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każdy może mieć taki rodzaj domen. Kluczowe jest jednak to, że ma to wpływ tylko na systemy, które używają tego konkretnego leja do rozpoznawania nazw DNS. Oczywiście główne serwery DNS lub serwery DNS kontrolowane przez dostawców usług internetowych będą miały wpływ na większą liczbę maszyn.
 
-To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie jak działa DNS i cały proces leżący u podstaw tego systemu a następnie omówimy dokładniej technikę sinkholingu.
+To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie, jak działa DNS oraz cały proces leżący u podstaw tego systemu. Następnie omówimy dokładniej technikę sinkholingu.
 
 ## Rozwiązywanie nazw
 
 DNS (ang. _Domain Name System_) jest jedną z kluczowych części komunikacji, która pozwala na konwertowanie nazw alfabetycznych na numeryczne adresy. Dzięki temu, mając odpowiednio skonfigurowany serwer DNS, jesteśmy w stanie odpytywać go np. o adresy IP domen, które przechowuje.
 
-Sam proces rozwiązywania nazw (czyli właśnie np. zamiany nazwy na adres IP) obejmuje mechanizm podobny do znajdowania domu na podstawie adresu. Przypuśćmy, że pilnie musimy stawić się w danym miejscu jednak znamy tylko adres. Odpytując specjalną bazę danych (w tym wypadku serwer DNS) jesteśmy w stanie uzyskać wynik będący dokładnymi współrzędnymi tego miejsca dzięki czemu poznamy ostateczną lokalizację.
+Sam proces rozwiązywania nazw (czyli właśnie np. zamiany nazwy na adres IP) obejmuje mechanizm podobny do znajdowania domu na podstawie adresu. Przypuśćmy, że pilnie musimy stawić się w danym miejscu, jednak znamy tylko adres. Odpytując specjalną bazę danych (w tym wypadku serwer DNS), jesteśmy w stanie uzyskać wynik będący dokładnymi współrzędnymi tego miejsca, dzięki czemu poznamy ostateczną lokalizację.
 
 Jak dobrze wiemy, każdemu urządzeniu podłączonemu do sieci nadawany jest adres IP, który jest niezbędny do zlokalizowania go w sieci. Na przykład, gdy chcemy załadować stronę internetową znajdującą się na zdalnym serwerze, musi nastąpić tłumaczenie między tym, co wpisujemy w swojej przeglądarce (np. <span class="h-b">example.com</span>), a zrozumiałym dla urządzeń i protokołów adresem IP (np. 192.168.10.25) niezbędnym do zlokalizowania strony internetowej. Ten proces tłumaczenia ma kluczowe znaczenie dla ładowania każdej strony internetowej.
 
-Omówmy w takim razie cały proces jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Wygląda on podobnie do poniższego diagramu w typowym systemie GNU/Linux:
+Omówmy w takim razie cały proces, jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Wygląda on podobnie do poniższego diagramu w typowym systemie GNU/Linux:
 
 <p align="center">
   <img src="/assets/img/posts/ns_resolution.png">
@@ -37,9 +37,9 @@ Sam mechanizm i wszystkie kroki od wpisania w przeglądarce nazwy do uzyskania a
 
 ### Klient (przeglądarka)
 
-Wpisując np. w przeglądarce adres <span class="h-b">example.com</span> w pierwszej kolejności przeglądarka sprawdza, czy domena znajduje się w jej lokalnej pamięci podręcznej. Jeśli odwiedzałeś jakiś czas temu tę domenę, przeglądarka może już wiedzieć, jaki jest jej adres IP i mieć tę wartość w swoim lokalnym buforze.
+Wpisując np. w przeglądarce adres <span class="h-b">example.com</span>, w pierwszej kolejności przeglądarka sprawdza, czy domena znajduje się w jej lokalnej pamięci podręcznej. Jeśli odwiedzałeś jakiś czas temu tę domenę, przeglądarka może już wiedzieć, jaki jest jej adres IP i mieć tę wartość w swoim lokalnym buforze.
 
-Pamięć podręczna przeglądarki zwykle przechowuje obiekty dosyć krótko a nie dłużej niż poprzez parametr czasu życiu (_ang. Time to Live_) — czyli adres jest przechowywany tak długo, jak został określony za pomocą tego parametru. Z drugiej strony, przeglądarki komunikują się z lokalnym resolverem więc TTL nie powinien mieć większego znaczenia. Po trzecie, przeglądarki posiadają wbudowane opcje, które sterują czasem życia rekordów, np. Firefox posiada parametry konfiguracyjne: <span class="h-b">network.dnsCacheExpiration</span> i <span class="h-b">network.dnsCacheExpirationGracePeriod</span> z domyślną wartością 60 sekund. Google Chrome i wbudowany wewnętrzny mechanizm rozpoznawania nazw DNS ignoruje TTL rekordów DNS i buforuje żądania DNS także przez 60 sekund.
+Pamięć podręczna przeglądarki zwykle przechowuje obiekty dosyć krótko, a nie dłużej niż poprzez parametr czasu życiu (_ang. Time to Live_) — czyli adres jest przechowywany tak długo, jak został określony za pomocą tego parametru. Z drugiej strony, przeglądarki komunikują się z lokalnym resolverem więc TTL nie powinien mieć większego znaczenia. Po trzecie, przeglądarki posiadają wbudowane opcje, które sterują czasem życia rekordów, np. Firefox posiada parametry konfiguracyjne: <span class="h-b">network.dnsCacheExpiration</span> i <span class="h-b">network.dnsCacheExpirationGracePeriod</span> z domyślną wartością 60 sekund. Google Chrome i wbudowany wewnętrzny mechanizm rozpoznawania nazw DNS ignoruje TTL rekordów DNS i buforuje żądania DNS także przez 60 sekund.
 
 ### GNU libc
 
@@ -129,7 +129,7 @@ close(3)
 
 Oraz nie buforuje odpowiedzi (ogólnie obie nie buforują, aby zapewnić taką funkcję można użyć demona nscd), więc kolejne połączenia także są dosyć kosztowne przy jej wykorzystaniu.
 
-Interesujące jest także to, że żaden z wymienionych wyżej plików nie jest znany procesom tak po prostu. Taką wiedzę uzyskują one dopiero po załadowaniu specjalnych współdzielonych bibliotek w czasie swojego wykonywania. Na przykład wywołując obie funkcje w dystrybucji Debianopodobnej:
+Interesujące jest także to, że żaden z wymienionych wyżej plików nie jest znany procesom tak po prostu. Taką wiedzę uzyskują one dopiero po załadowaniu specjalnych współdzielonych bibliotek w czasie swojego wykonywania. Na przykład wywołując obie funkcje w dystrybucji Debiano podobnej:
 
 - `/etc/hosts` jest znany z poziomu `libnss_files.so.2`
 - `/etc/resolv.conf` jest znany z poziomu `libnss_dns.so.2`
@@ -144,17 +144,17 @@ Jeżeli chodzi o mechanizm rozwiązywania nazw, plik ten oczywiście przyjmuje r
 hosts: files dns
 ```
 
-Co oznacza taki wpis? Mówi on, że aby znaleźć hosta najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. W dystrybucji CentOS 7.7 wpis hosts w tym pliku wygląda następująco:
+Co oznacza taki wpis? Mówi on, że aby znaleźć hosta, najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. W dystrybucji CentOS 7.7 wpis hosts w tym pliku wygląda następująco:
 
 ```
 hosts: files dns myhostname
 ```
 
-Jest on niezwykle podobny jednak posiada dodatkową wartość. W tym wypadku mówi on, że aby znaleźć hosta najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. Jeżeli obie próby zakończą się niepowodzeniem, odpytaj bibliotekę `libnss_myhostname.so`. Oczywiście w zależności od systemu czy dystrybucji wartości mogą znajdować się na innym miejscu.
+Jest on niezwykle podobny, jednak posiada dodatkową wartość. W tym wypadku mówi on, że aby znaleźć hosta, najpierw należy odpytać bibliotekę `libnss_files.so`. Jeśli to się nie powiedzie, należy odpytać bibliotekę `libnss_dns.so`. Jeżeli obie próby zakończą się niepowodzeniem, odpytaj bibliotekę `libnss_myhostname.so`. Oczywiście w zależności od systemu czy dystrybucji wartości mogą znajdować się na innym miejscu.
 
 Widzimy, że z poziomu pliku `nsswitch.conf` możemy zmuszać funkcje <span class="h-b">gethostbyname</span> i <span class="h-b">getaddrinfo</span> do wypróbowywania każdej z wymienionych usług, np. do przeszukiwania serwera DNS przed plikiem `/etc/hosts`. Jeśli wyszukiwanie powiedzie się, zwracany jest wynik, w przeciwnym razie sprawdzona zostanie następna usługa z listy.
 
-Praktycznie w każdym systemie i dystrybucji plik `hosts` ma pierwszeństwo przed pozostałymi usługami. Informacje o nazwie hosta mogą się jednak zmieniać bardzo często, więc w niektórych sytuacjach serwer DNS powinien zawsze mieć najdokładniejsze dane, podczas gdy lokalny plik hostów traktowany jest jako kopia zapasowa tylko na wypadek awarii.
+Praktycznie w każdym systemie i dystrybucji plik `hosts` ma pierwszeństwo przed pozostałymi usługami. Informacje o nazwie hosta, mogą się jednak zmieniać bardzo często, więc w niektórych sytuacjach serwer DNS powinien zawsze mieć najdokładniejsze dane, podczas gdy lokalny plik hostów traktowany jest jako kopia zapasowa tylko na wypadek awarii.
 
   > We wpisie hosts pliku `nsswitch.conf` może pojawić się jeszcze coś takiego jak mDNS. Jeżeli chcesz uzyskać więcej informacji na ten temat zerknij na odpowiedź [mDNS or Multicast DNS service](https://askubuntu.com/a/853284).
 
@@ -166,21 +166,25 @@ Podobnie sytuacja wygląda z narzędziem `nslookup` czy poleceniem `ping`. Pierw
 
 ### DNS Server
 
-Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy — pozostaje ostatni krok — czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce domenę <span class="h-b">example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
+Jeżeli procesom działającym w Twoim systemie nie udało się uzyskać adresu IP szukanej nazwy — pozostaje ostatni krok — czyli odpytanie zewnętrznych serwerów DNS. Jeśli wpiszesz w przeglądarce domenę <span class="h-b">host1.b.example.com</span> mechanizmy systemu operacyjnego wyślą ​​zapytanie do skonfigurowanego serwera DNS z pytaniem właśnie o tę domenę.
 
-Najczęściej takim serwerem jest serwer w sieci lokalnej (LAN). Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile taki wpis nie wygasł). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny, uruchomi procedurę odpytywania. W tym celu musi ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę.
+Jak już wiesz, w pierwszej kolejności odpytane zostaną serwery DNS ustawione w pliku `/etc/resolv.conf`. Mogą to być np. rekursywne serwery DNS Google: 8.8.8.8, 8.8.4.4, lub CloudFlare: 1.1.1.1, 1.0.0.1 (pełną listę publicznych serwerów DNS znajdziesz w [Public DNS Server List](https://public-dns.info/)), jednak najczęściej „najbliższym” serwerem jest serwer w sieci lokalnej, który jeśli nie posiada informacji o szukanej domenie, przekaże zapytanie do rekursywnego serwera DNS, często udostępnianego przez dostawcę usług internetowych (ISP).
 
-Przed tym jednak lokalny serwer przekaże zapytanie do tzw. rekursywnego serwera DNS, często udostępnianego przez dostawcę usług internetowych (ISP). Rekursywny serwer DNS ma własną pamięć podręczną i jeśli ma adres IP, zwróci go do Ciebie. Jeśli nie, poprosi inny serwer DNS. Ponieważ pamięć podręczna serwera DNS zawiera tymczasowy magazyn rekordów DNS, będzie on szybko odpowiadał na żądania. Te serwery pamięci podręcznej DNS są nazywane nieautorytatywnymi serwerami DNS, ponieważ zapewniają rozwiązywanie żądań na podstawie wartości buforowanej uzyskanej z autorytatywnych serwerów DNS.
+Rekursywny serwer DNS ma własną pamięć podręczną i jeśli zna adres IP szukanej domeny, zwróci go do Ciebie. Jeśli nie, poprosi inny serwer DNS o pomoc w znalezieniu serwera głównego dla domeny, z którą chcesz nawiązać połączenie. Ponieważ pamięć podręczna serwera DNS zawiera tymczasowy magazyn rekordów DNS, będzie on bardzo szybko odpowiadał na żądania. Te serwery pamięci podręcznej są nazywane nieautorytatywnymi serwerami DNS, ponieważ zapewniają rozwiązywanie żądań na podstawie wartości buforowanej uzyskanej z autorytatywnych serwerów DNS.
 
-Następnym etapem są serwery nazw TLD, w tym przypadku serwer nazw TLD dla adresów <span class="h-b">.com</span>. Te serwery nie mają adresu IP, którego potrzebujemy, ale mogą wysłać żądanie DNS we właściwym kierunku. Widzimy, że pierwszym wysłanym zapytaniem będzie to, które dotyczy domeny głównego rzędu, tj. <span class="h-b">.</span> (root) aby znaleźć odpowiedni serwer dla domeny niższego rzędu, tj. <span class="h-b">.com</span>. Gdy uda się ustalić taki serwer, serwer DNS, który odpytywaliśmy, skomunikuje się z tym serwerem z ​​zapytaniem o serwer nazw.
+Jeśli odpytywany serwer DNS zna odpowiedź, ponieważ ostatnio zadano mu to samo pytanie, zwróci ją z pamięci podręcznej (o ile taki wpis nie wygasł). Jeśli odpytywany serwer DNS nie jest w stanie rozwiązać domeny, uruchomi dalszą procedurę odpytywania. W tym celu musi ustalić, który serwer DNS jest tzw. serwerem autorytatywnym, czyli takim serwerem, który na pewno potrafi rozwiązać szukaną przez nas nazwę (jest jej właścicielem).
 
-To, co mają serwery nazw TLD, to lokalizacja autorytatywnego serwera nazw dla żądanej witryny. Autorytatywny serwer nazw odpowiada adresem IP dla <span class="h-b">example.com</span>, a rekursywny serwer DNS przechowuje go w lokalnej pamięci podręcznej DNS i zwraca adres do komputera.
+  > Autorytatywny serwer nazw to miejsce, w którym administratorzy zarządzają nazwami serwerów i adresami IP swoich domen. Ilekroć administrator DNS chce dodać, zmienić lub usunąć nazwę serwera lub adres IP, dokonuje zmiany na swoim autorytatywnym serwerze DNS. Istnieją również „podrzędne” serwery DNS, czyli takie, które przechowują kopie rekordów DNS swoich stref i domen.
 
-Jeśli ma adres na przykład serwery nazw example.com, wyśle ​​oryginalne zapytanie dla <span class="h-b">www.example.com</span> do tego serwera i zwróci Ci odpowiedź (i umieści kopię w swojej pamięci podręcznej na wypadek, gdyby ktoś o to poprosił)
+Na kolejnym poziomie znajdują się serwery główne (ang. _root_). Jeżeli serwer rekursywny nie znajdzie odpowiedniego wpisu w swojej pamięci podręcznej, poprosi o pomoc serwery z tzw. autorytatywnej hierarchi (ang. _authoritative DNS hierarchy_), aby uzyskać odpowiedź. Dzieje się tak, ponieważ każda część domeny, taka jak <span class="h-b">host1.b.example.com</span>, ma określony autorytatywny serwer nazw DNS (lub grupę nadmiarowych autorytatywnych serwerów nazw).
 
-W internecie jest dużo komputerów, więc nie ma sensu umieszczać wszystkich zapisów w jednej dużej książce. Zamiast tego DNS jest podzielony na mniejsze książki lub domeny. Domeny mogą być bardzo duże, więc są dalej organizowane w mniejsze książki, zwane „strefami”. Żaden serwer DNS nie przechowuje wszystkich książek - byłoby to niepraktyczne.
+W górnej części drzewa serwerów znajdują się główne serwery nazw domen. Każdy adres witryny internetowej ma domniemane <span class="h-b">.</span> na końcu, nawet jeśli tego nie wpiszemy. To <span class="h-b">.</span> wyznacza główne serwery nazw DNS na szczycie hierarchii DNS. Główne serwery nazw domen będą znać adresy IP autorytatywnych serwerów nazw, które obsługują zapytania DNS dla domen najwyższego poziomu TLS (ang. _Top Level Domains_), takich jak <span class="h-b">.com</span> czy <span class="h-b">.gov</span>.
 
-Autorytatywny serwer nazw to miejsce, w którym administratorzy zarządzają nazwami serwerów i adresami IP swoich domen. Ilekroć administrator DNS chce dodać, zmienić lub usunąć nazwę serwera lub adres IP, dokonuje zmiany na swoim autorytatywnym serwerze DNS (czasami nazywanym „głównym serwerem DNS”). Istnieją również „podrzędne” serwery DNS; te serwery DNS przechowują kopie rekordów DNS swoich stref i domen.
+Te serwery nie mają adresu IP, którego potrzebujemy, ale mogą wysłać żądanie DNS we właściwym kierunku. Widzimy, że pierwszym wysłanym zapytaniem będzie to, które dotyczy domeny głównego rzędu, tj. <span class="h-b">.</span> (root), aby znaleźć odpowiedni serwer dla domeny niższego rzędu, tj. <span class="h-b">.com</span>. Gdy uda się ustalić taki serwer, serwer DNS, który odpytywaliśmy, skomunikuje się z tym serwerem z ​​zapytaniem o serwer nazw. Rekurencyjny serwer DNS najpierw pyta główny serwer nazw domen o adres IP serwera TLD <span class="h-b">.com</span>, ponieważ <span class="h-b">host1.b.example.com</span> znajduje się właśnie w TLD <span class="h-b">.com</span>.
+
+  > To, co mają serwery nazw TLD, to lokalizacja autorytatywnego serwera nazw dla żądanej witryny. Autorytatywny serwer nazw odpowiada adresem IP dla <span class="h-b">example.com</span>, a rekursywny serwer DNS przechowuje go w lokalnej pamięci podręcznej DNS i zwraca adres do komputera.
+
+Główny serwer nazw domeny odpowiada adresem serwera TLD. Następnie rekursywny serwer DNS pyta autorytatywny serwer TLD, gdzie może znaleźć autorytatywny serwer DNS dla <span class="h-b">host1.b.example.com</span>. Autorytatywny serwer TLD odpowiada i proces jest kontynuowany. Autorytatywny serwer <span class="h-b">host1.b.example.com</span> jest pytany, gdzie znaleźć <span class="h-b">host1.b.example.com</span>, a serwer odpowiada z odpowiedzią. Gdy rekursywny serwer DNS zna adres IP witryny sieci Web, odpowiada komputerowi, podając odpowiedni adres IP. Twoja przeglądarka ładuje stronę i możesz rozpocząć jej przeglądanie.
 
 Cały proces można podsumować poniższym diagramem:
 
