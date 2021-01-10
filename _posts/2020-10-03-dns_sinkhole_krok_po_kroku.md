@@ -11,11 +11,15 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw, jakim jest DNS, ponieważ luki w implementacji tego protokołu pozwalają na jego wykorzystanie do złośliwych działań. Z racji tego, że DNS jest protokołem o krytycznym znaczeniu dla wszelkich operacji w sieci (i nie tylko), administratorzy powinni wzmocnić swoje serwery DNS, aby zapobiec ich nieodpowiedniemu użyciu. Istnieje wiele technik, które można wykorzystać do zapobiegania takich nadużyć. Dzisiaj opiszę jedną z nich.
+W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw, jakim jest DNS. Z racji tego, że protokół DNS ma krytyczne znaczenie dla wszelkich operacji w sieci, administratorzy powinni wzmocnić swoje serwery, aby zapobiec ich nieodpowiedniemu użyciu. Istnieje wiele technik, które można wykorzystać do zapobiegania takim nadużyciom. Dzisiaj opiszę jedną z nich, która niekoniecznie poprawia bezpieczeństwo samego serwera, a bardziej pozwala na ochronę pozostałych systemów oraz użytkowników.
 
-Technika DNS Sinkholing (ang. _sinkhole_ - lej) lub DNS Blackholing (ang. _blackhole_ - czarna dziura) jest używana do fałszowania wyników zwracanych z kontrolowanych przez administratora serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany przez nas zamiast oryginalnego adres IP. Gdy użytkownik próbuje uzyskać dostęp do sinkholowanej domeny może zostać mu zwrócony zasób z informacjami opisującymi ograniczenia lub może być skierowany do specjalnego miejsca w sieci lokalnej tak, aby zapobiec wejścia na zainfekowaną domenę/stronę.
+Technika DNS Sinkholing (ang. _sinkhole_ — lej) lub DNS Blackholing (ang. _blackhole_ — czarna dziura) jest używana do fałszowania wyników zwracanych z kontrolowanych przez administratora serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany przez nas zamiast oryginalnego adres IP. Gdy użytkownik próbuje uzyskać dostęp do sinkholowanej domeny może zostać mu zwrócony zasób z informacjami opisującymi ograniczenia lub może być skierowany do specjalnego miejsca w sieci lokalnej tak, aby zapobiec wejścia na zainfekowaną domenę/stronę. Widzisz, że sinkhole jest takim specjalnym miejscem, do którego kierowany jest, w sposób kontrolowany, ruch, który w normalnych warunkach byłby skierowany np. do złośliwej domeny.
 
-Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każdy może mieć taki rodzaj serwer, jednak kluczowe jest to, że ma to wpływ tylko na systemy, które używają tego konkretnego serwera DNS do rozpoznawania nazw. Oczywiście główne serwery DNS lub serwery DNS kontrolowane przez dostawców usług internetowych będą miały wpływ na większą liczbę maszyn.
+<p align="center">
+  <img src="/assets/img/posts/a_sinkhole_by_dilloncarrots_ddzkleb-fullview.jpg">
+</p>
+
+Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każdy może mieć taki rodzaj serwera, jednak kluczowe jest to, że ma on wpływ najczęściej tylko na systemy, które używają tego konkretnego serwera DNS do rozpoznawania nazw (czyli np. wewnątrz sieci firmowej). Oczywiście główne serwery DNS lub serwery DNS kontrolowane przez dostawców usług internetowych będą miały wpływ na większą liczbę maszyn.
 
 To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie, jak działa DNS oraz cały proces leżący u podstaw tego systemu. Następnie omówię trochę dokładniej technikę sinkholingu i zaprezentuję kilka możliwości zbudowania własnego serwera wykorzystującego ten mechanizm.
 
