@@ -11,7 +11,7 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw, jakim jest DNS. Z racji tego, że protokół DNS ma krytyczne znaczenie dla wszelkich operacji w sieci, administratorzy powinni wzmocnić swoje serwery i wykorzystać dostępne mechanizmy, aby zapobiec potencjalnym atakom. Istnieje wiele technik, które można wykorzystać do zapobiegania takim nadużyciom. Dzisiaj opiszę jedną z nich, która niekoniecznie poprawia bezpieczeństwo samego serwera, a bardziej pozwala na ochronę pozostałych systemów oraz użytkowników.
+W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem najbardziej znanego i wykorzystywanego systemu rozwiązywania nazw, jakim jest DNS. Z racji tego, że protokół DNS ma krytyczne znaczenie dla wszelkich operacji w sieci, administratorzy powinni wzmocnić swoje serwery i wykorzystać dostępne mechanizmy, aby zapobiec potencjalnym atakom. Istnieje wiele technik, które można wykorzystać do zapobiegania takim nadużyciom. Dzisiaj opiszę jedną z nich, która niekoniecznie poprawia bezpieczeństwo samego serwera, a bardziej pozwala na ochronę pozostałych systemów oraz użytkowników.
 
 Technika **DNS Sinkholing** (ang. _sinkhole_ — lej) lub **DNS Blackholing** (ang. _blackhole_ — czarna dziura) jest używana do świadomego fałszowania wyników zwracanych z kontrolowanych przez administratora serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany przez nas, zamiast oryginalnego, adres IP.
 
