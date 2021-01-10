@@ -1,7 +1,7 @@
 ---
 layout: post
-title: 'Czym jest domain sinkholing?'
-description: "Mechanizm przechwytywania żądań DNS w celu ochrony użytkowników."
+title: 'DNS Sinkhole krok po kroku'
+description: "Mechanizm przechwytywania żądań DNS w celu ochrony Twojej organizacji i użytkowników."
 date: 2020-10-03 10:47:45
 categories: [publications]
 tags: [dns, security]
@@ -11,23 +11,29 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw (mam nadzieję, że nie jest to zbytnie nadużycie), jakim jest DNS.
+W tym wpisie chciałbym poruszyć niezwykle ciekawy temat związany z bezpieczeństwem systemu rozwiązywania nazw, jakim jest DNS, ponieważ luki w implementacji tego protokołu pozwalają na jego wykorzystanie do złośliwych działań. Z racji tego, że DNS jest protokołem o krytycznym znaczeniu dla wszelkich operacji w sieci (i nie tylko), administratorzy powinni wzmocnić swoje serwery DNS, aby zapobiec ich nieodpowiedniemu użyciu. Istnieje wiele technik, które można wykorzystać do zapobiegania takich nadużyć. Dzisiaj opiszę jedną z nich.
 
-Technika DNS Sinkholing (ang. _sinkhole_ - lej) lub DNS Blackholing (ang. _blackhole_ - czarna dziura) jest używana do fałszowania wyników zwracanych z serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany adres IP. Gdy użytkownik próbuje uzyskać dostęp do sinkholowanej domeny może zostać mu zwrócony zasób z informacjami opisującymi ograniczenia lub może być skierowany do specjalnego miejsca w sieci lokalnej tak, aby zapobiec wejścia na zainfekowaną domenę/stronę.
+Technika DNS Sinkholing (ang. _sinkhole_ - lej) lub DNS Blackholing (ang. _blackhole_ - czarna dziura) jest używana do fałszowania wyników zwracanych z kontrolowanych przez administratora serwerów DNS. Dzięki temu jesteśmy w stanie ograniczyć lub odmówić dostępu do określonej domeny czy strony internetowej zwracając dla niej wskazany przez nas zamiast oryginalnego adres IP. Gdy użytkownik próbuje uzyskać dostęp do sinkholowanej domeny może zostać mu zwrócony zasób z informacjami opisującymi ograniczenia lub może być skierowany do specjalnego miejsca w sieci lokalnej tak, aby zapobiec wejścia na zainfekowaną domenę/stronę.
 
-Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każdy może mieć taki rodzaj domen. Kluczowe jest jednak to, że ma to wpływ tylko na systemy, które używają tego konkretnego leja do rozpoznawania nazw DNS. Oczywiście główne serwery DNS lub serwery DNS kontrolowane przez dostawców usług internetowych będą miały wpływ na większą liczbę maszyn.
+Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każdy może mieć taki rodzaj serwer, jednak kluczowe jest to, że ma to wpływ tylko na systemy, które używają tego konkretnego serwera DNS do rozpoznawania nazw. Oczywiście główne serwery DNS lub serwery DNS kontrolowane przez dostawców usług internetowych będą miały wpływ na większą liczbę maszyn.
 
-To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie, jak działa DNS oraz cały proces leżący u podstaw tego systemu. Następnie omówimy dokładniej technikę sinkholingu.
+To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie, jak działa DNS oraz cały proces leżący u podstaw tego systemu. Następnie omówię trochę dokładniej technikę sinkholingu i zaprezentuję kilka możliwości zbudowania własnego serwera wykorzystującego ten mechanizm.
 
-## Rozwiązywanie nazw
+## DNS i rozwiązywanie nazw
 
-DNS (ang. _Domain Name System_) jest jedną z kluczowych części komunikacji, która pozwala na konwertowanie nazw alfabetycznych na numeryczne adresy. Dzięki temu, mając odpowiednio skonfigurowany serwer DNS, jesteśmy w stanie odpytywać go np. o adresy IP domen, które przechowuje.
+DNS (ang. _Domain Name System_) jest jedną z kluczowych części komunikacji, która pozwala na konwertowanie nazw alfabetycznych na numeryczne adresy. Dzięki temu, mając odpowiednio skonfigurowany serwer DNS, jesteśmy w stanie odpytywać go np. o adresy IP szukanych domen, które przechowuje.
 
-Sam proces rozwiązywania nazw (czyli właśnie np. zamiany nazwy na adres IP) obejmuje mechanizm podobny do znajdowania domu na podstawie adresu. Przypuśćmy, że pilnie musimy stawić się w danym miejscu, jednak znamy tylko adres. Odpytując specjalną bazę danych (w tym wypadku serwer DNS), jesteśmy w stanie uzyskać wynik będący dokładnymi współrzędnymi tego miejsca, dzięki czemu poznamy ostateczną lokalizację.
+Sam proces rozwiązywania nazw (czyli zamiany nazwy na adres IP) obejmuje mechanizm podobny do znajdowania domu na podstawie adresu. Przypuśćmy, że pilnie musimy stawić się w danym miejscu, jednak znamy tylko adres. Odpytując specjalną bazę danych (w tym wypadku serwer DNS), jesteśmy w stanie uzyskać wynik będący dokładnymi współrzędnymi tego miejsca, dzięki czemu poznamy ostateczną lokalizację.
 
-Jak dobrze wiemy, każdemu urządzeniu podłączonemu do sieci nadawany jest adres IP, który jest niezbędny do zlokalizowania go w sieci. Na przykład, gdy chcemy załadować stronę internetową znajdującą się na zdalnym serwerze, musi nastąpić tłumaczenie między tym, co wpisujemy w swojej przeglądarce (np. <span class="h-b">example.com</span>), a zrozumiałym dla urządzeń i protokołów adresem IP (np. 192.168.10.25) niezbędnym do zlokalizowania strony internetowej. Ten proces tłumaczenia ma kluczowe znaczenie dla ładowania każdej strony internetowej.
+Jak dobrze wiemy, każdemu urządzeniu podłączonemu do sieci nadawany jest adres IP, który jest niezbędny do zlokalizowania go w sieci oraz wymiany komunikacji. Na przykład, gdy chcemy załadować stronę internetową znajdującą się na zdalnym serwerze, musi nastąpić tłumaczenie między tym, co wpisujemy w swojej przeglądarce (np. <span class="h-b">example.com</span>), a zrozumiałym dla urządzeń i protokołów adresem IP (np. 192.168.10.25) niezbędnym do zlokalizowania strony internetowej. Ten proces tłumaczenia ma kluczowe znaczenie dla ładowania każdej strony internetowej.
 
-Omówmy w takim razie cały proces, jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Wygląda on podobnie do poniższego diagramu w typowym systemie GNU/Linux:
+Odpowiada za to protokół DNS, który został opisany w kilku dokumentach RFC, natomiast najnowsze z nich to [RFC - 1034 - Domain Names - Concepts And Facilities](https://tools.ietf.org/html/rfc1034) oraz [RFC 1035 - Domain Names - Implementation And Specification](https://tools.ietf.org/html/rfc1035). Przeglądając je, znajdziesz w nich odnośniki to starszych wersji.
+
+Jeżeli chodzi o protokół DNS, to z istotniejszych informacji, które musimy wiedzieć, jest to, że może on korzystać z obu protokołów warstwy transportu i domyślnie używa portu docelowego o numerze 53. Gdy protokół DNS używa UDP jako transportu, ma możliwość obsługi retransmisji i sekwencjonowania UDP. Jeżeli natomiast chodzi o przechowywanie informacji o domenach, to są one zdefiniowane (przechowywane) w rekordach zasobów (ang. _RR - Resource Records_), które najczęściej są pogrupowane w strefy i przechowywane lokalnie na serwerze DNS.
+
+Co równie istotne, każda nazwa domeny składa się z co najmniej jednej etykiety. Etykiety są oddzielone znakiem <span class="h-b">.</span> i mogą zawierać maksymalnie 63 znaki. W pełni kwalifikowana nazwa domeny (ang. _FQDN - Fully Qualified Domain Name_) może zawierać maksymalnie 255 znaków, łącznie ze znakiem kropki. Etykiety są konstruowane od prawej do lewej strony, gdzie etykieta po prawej stronie jest domeną najwyższego poziomu (ang. _TLD - Top Level Domain_) dla nazwy domeny. Na przykład mając domenę <span class="h-b">foo.bar.example.com</span> etykieta znajdująca się najbardziej po prawej stronie, tj. <span class="h-b">.com</span> będzie etykietą TLD.
+
+Dobrze, omówmy w takim razie cały proces, jaki odbywa się podczas rozwiązywania nazwy domenowej, ponieważ jego zrozumienie jest kluczowe. Wygląda on podobnie do poniższego diagramu w typowym systemie GNU/Linux:
 
 <p align="center">
   <img src="/assets/img/posts/ns_resolution.png">
@@ -208,7 +214,7 @@ Podsumowując, gdy klient DNS wysyła takie żądanie, pierwszy odpowiadający s
 
 - serwery główne (ang. _Root DNS Servers_) - ten typ serwerów nie mapuje adresów IP na nazwy domen. Zamiast tego przechowuje informacje o wszystkich serwerach nazw domen najwyższego poziomu (TLD) i zajmują się one jedynie wskazywaniem ich lokalizacji. TLD to skrajna prawa sekcja nazwy domeny, na przykład <span class="h-b">.com</span> w przypadku <span class="h-b">example.com</span> lub <span class="h-b">.org</span> w przypadku <span class="h-b">example.org</span>. Serwery główne są krytyczne, ponieważ są pierwszym przystankiem dla wszystkich żądań wyszukiwania DNS
 
-- serwery nazw TLD (ang. _Top Level Domain DNS Servers_)- ten typ serwerów zawiera dane z domen drugiego poziomu, takich jak <span class="h-b">example</span> dla <span class="h-b">example.com</span>. Wcześniej serwer główny wskazywał lokalizację serwera TLD, a następnie taki serwer kieruje żądanie do serwera zawierającego niezbędne dane dotycząca domeny
+- serwery nazw TLD (ang. _Top Level Domain DNS Servers_) - ten typ serwerów zawiera dane z domen drugiego poziomu, takich jak <span class="h-b">example</span> dla <span class="h-b">example.com</span>. Wcześniej serwer główny wskazywał lokalizację serwera TLD, a następnie taki serwer kieruje żądanie do serwera zawierającego niezbędne dane dotycząca domeny
 
 - autorytatywny serwer nazw (ang. _Authoritative DNS Server_) - ten typ serwera DNS jest ostatecznym miejscem docelowym dla żądań wyszukiwania DNS. Dostarcza on adres IP domeny z powrotem do rekurencyjnych serwerów DNS, a następnie do klienta (przy okazji rekord dla tego żądania jest teraz przechowywany w pamięci podręcznej serwera rekursywnego oraz klienta tj. przeglądarki internetowej). Jeśli witryna ma subdomeny, lokalny serwer DNS będzie wysyłać żądania do autorytatywnego serwera, aż ostatecznie ustali adres IP
 
@@ -218,26 +224,34 @@ Cały proces można zobrazować na poniższym diagramie:
   <img src="/assets/img/posts/dns_hierarchy.png">
 </p>
 
-## Domain sinkholing
+## DNS Sinkhole
 
-Przypomnieliśmy sobie, czym jest i jak działa system rozwiązywania nazw. Z racji tego, że usługa ta jest podstawową i wręcz krytyczną usługą używaną do uzyskiwania dostępu do Internetu, istotne jest jej kontrolowanie. Na przykład przechwytując wychodzące żądania DNS próbujące uzyskać dostęp do znanych złośliwych domen lub choćby w pełni legalnych witryn zawierających jednak złośliwe reklamy, organizacja może kontrolować odpowiedź i uniemożliwić komputerom organizacji łączenie się z tymi domenami. Ta aktywność zapobiega niechcianej komunikacji i jest w stanie złagodzić znane i nieznane zagrożenia hostowane w znanych złośliwych lub niechcianych domenach.
+Przypomnieliśmy sobie po krótce, czym jest i jak działa system rozwiązywania nazw. Wiemy już, że jest to globalnie rozproszona, skalowalna, hierarchiczna i dynamiczna baza danych, która zapewnia m.in. mapowanie między nazwami hostów, adresami IP (zarówno IPv4, jak i IPv6) i jeszcze kilkoma innymi rekordami.
+
+Z racji tego, że usługa ta jest podstawową i wręcz krytyczną usługą używaną do uzyskiwania dostępu do Internetu, istotne jest jej kontrolowanie. Tutaj do akcji wkracza mechanizm DNS Sinkholing mający na celu ochronę użytkowników poprzez przechwytywanie żądań DNS próbujących połączyć się ze znanymi złośliwymi lub niechcianymi domenami poprzez zwracanie fałszywego i kontrolowanego adresu IP. Technika ta została dokładnie opisana w świetnej pracy pod tytułem [DNS Sinkhole]({{ site.url }}/assets/pdfs/dns-sinkhole-33523.pdf) <sup>[PDF]</sup>, której autorem jest [Guy Bruneau](https://handlers.sans.org/gbruneau/).
+
+Na przykład przechwytując wychodzące żądania DNS próbujące uzyskać dostęp do znanych złośliwych domen lub choćby w pełni legalnych witryn zawierających jednak złośliwe reklamy, organizacja może kontrolować odpowiedź i uniemożliwić komputerom organizacji łączenie się z tymi domenami. Pozwala to zapobiedz niechcianej komunikacji i jest w stanie złagodzić znane i nieznane zagrożenia w znanych złośliwych lub niechcianych domenach. Dzięki funkcji sinkholingu możemy blokować zapytania DNS do określonych domen, odbierać zapytania DNS na wyjściu sieci i podejmować działania zamiast przekazywać je do wewnętrznych lub publicznych serwerów DNS.
 
 <p align="center">
   <img src="/assets/img/posts/dns_flow_without_sinkholing.png">
 </p>
 
-Tutaj do akcji wkracza mechanizm DNS Sinkholing mający na celu ochronę użytkowników poprzez przechwytywanie żądań DNS próbujących połączyć się ze znanymi złośliwymi lub niechcianymi domenami i zwracanie fałszywego, lub raczej kontrolowanego adresu IP. Widzisz, że tak skonfigurowany serwer przechwytuje żądania DNS klienta do znanych złośliwych witryn, odpowiadając za pomocą adresu IP, który kontrolujesz, zamiast prawdziwego ich adresu, dzięki czemu klient kierowany jest w bezpieczne miejsce. Kontrolowany adres IP wskazuje najczęściej na serwer zdefiniowany i będący pod kontrolą administratora.
+Widzisz, że tak skonfigurowany serwer przechwytuje żądania DNS klienta do znanych złośliwych witryn, odpowiadając za pomocą adresu IP, który kontrolujesz, zamiast prawdziwego ich adresu, dzięki czemu klient kierowany jest w bezpieczne miejsce. Kontrolowany adres IP wskazuje najczęściej na serwer zdefiniowany i będący pod kontrolą administratora.
 
 <p align="center">
   <img src="/assets/img/posts/dns_flow_with_sinkholing.png">
 </p>
 
-Jest to niezwykle potężna technika ograniczania ataków botów, poprzez blokowanie komunikacji między serwerem C&C (ang. _Command and Control_) a nimi. Jeśli komputer zombie wysyła zapytanie DNS do naszego serwera DNS w celu komunikacji z jego serwerem C&C, nasz serwer DNS, który zawiera czarną listę domen serwerów C&C, zwraca adres IP naszego specjalnego serwera. W rezultacie, ponieważ komputer zombie próbuje komunikować się z naszym serwerem, nie może komunikować się ze swoim serwerem C&C. Z drugiej strony istnieje wiele cyberataków powodowanych przez złośliwe adresy URL zawarte w wiadomościach spam. Dlatego też, jeśli wyodrębnimy złośliwe adresy URL z tego typu wiadomości i zastosujemy je do techniki sinkholingu DNS, wiele ataków opartych na spamie może zostać zablokowanych.
+Jest to niezwykle potężna technika, która pozwala np. na ograniczenie ataków botów, poprzez blokowanie komunikacji między serwerem atakującego a nimi. Sinkholing można jednak wykonać na różnych poziomach. Wiadomo, że zarówno dostawcy usług internetowych, jak i rejestratorzy domen używają tej techniki do ochrony swoich klientów, kierując żądania do złośliwych lub niechcianych nazw domen na kontrolowane adresy IP. Administratorzy systemów mogą również skonfigurować wewnętrzny serwer DNS typu sinkhole w infrastrukturze swojej organizacji. Użytkownik może również zmodyfikować plik `/etc/hosts` w swoim systemie i uzyskać ten sam wynik. Istnieje wiele list (zarówno otwartych, jak i komercyjnych) znanych złośliwych domen, których administrator może wykorzystać.
+
+Taka metoda blokowania nie tylko zwiększa bezpieczeństwo stacji klienckich (zatrzymując potencjalne złośliwe reklamy), ale także pozwala klientom na ich blokowanie bez żadnych wtyczek czy dodatkowej konfiguracji. Kolejną zaletą blokowania na tym poziomie (DNS) jest to, że cała sieć może skorzystać z filtrowania bez konieczności konfigurowania jakiegokolwiek rodzaju filtrowania proxy na każdym kliencie.
+
+Oprócz zapobiegania złośliwym połączeniom, sinkholing może służyć do identyfikowania zainfekowanych hostów poprzez analizę dzienników i identyfikowanie hostów, które próbują połączyć się ze znanymi złośliwymi domenami. Na przykład, jeśli dzienniki pokazują, że jedna konkretna maszyna nieustannie próbuje połączyć się z tzw. serwerem C&C (ang. _Command and Control_) — czyli takim serwerem, który jest kontrolowany przez atakującego, który służy do wysyłania poleceń do systemów zainfekowanych złośliwym oprogramowaniem i odbierania skradzionych danych z sieci docelowej — ale żądanie jest przekierowywane z powodu sinkholinu, istnieje duża szansa, że ​​ta konkretna maszyna jest zainfekowana botem.
+
+Jeśli zainfekowany system wysyła zapytanie DNS do naszego serwera DNS w celu komunikacji z jego serwerem C&C, nasz serwer DNS, który zawiera czarną listę domen serwerów C&C, zwraca adres IP naszego specjalnego serwera. W rezultacie, ponieważ komputer zombie próbuje komunikować się z naszym serwerem, nie może komunikować się ze swoim serwerem C&C. Z drugiej strony istnieje wiele cyberataków powodowanych przez złośliwe adresy URL zawarte w wiadomościach spam. Dlatego też, jeśli wyodrębnimy złośliwe adresy URL z tego typu wiadomości i zastosujemy je do techniki sinkholingu DNS, wiele ataków opartych na spamie może zostać zablokowanych.
 
 Dzięki systemowi lejów DNS wykorzystującym nową czarną listę domen będziemy w stanie wcześnie wykrywać i blokować najnowsze złośliwe zachowania w Internecie.
 
 Technikę tę można wykorzystać do zapobiegania łączeniu się hostów lub komunikowaniu się ze znanymi złośliwymi miejscami docelowymi, takimi jak serwer C&C botnetu (łącze do Infonote). Serwer Sinkhole może być używany do zbierania dzienników zdarzeń, ale w takich przypadkach administrator Sinkhole musi zapewnić, że wszystkie rejestracje są wykonywane w ramach ich prawnych granic i że nie ma naruszenia prywatności.
 
 Przydatne zasoby:
-
-- [SANS Institute - DNS Sinkhole]({{ site.url }}/assets/pdfs/dns-sinkhole-33523.pdf) <sup>[PDF]</sup>
