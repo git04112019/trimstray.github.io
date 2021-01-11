@@ -25,7 +25,7 @@ Oczywiście technika ta może zostać użyta do niecnych celów, ponieważ każd
 
 To tyle tytułem wstępu. Przejdźmy do dalszej części artykułu, w której przypomnimy sobie, jak działa DNS oraz cały proces leżący u podstaw tego systemu w typowej dystrybucji GNU/Linux. Następnie omówię trochę dokładniej technikę sinkholingu i zaprezentuję kilka możliwości zbudowania własnego serwera wykorzystującego ten mechanizm.
 
-## Mechanizm rozwiązywania nazw
+## DNS i mechanizm rozwiązywania nazw
 
 DNS (ang. _Domain Name System_) jest jedną z kluczowych części komunikacji, która pozwala na konwertowanie nazw alfabetycznych na numeryczne adresy. Dzięki temu, mając odpowiednio skonfigurowany serwer DNS, jesteśmy w stanie odpytywać go np. o adresy IP szukanych domen, które przechowuje.
 
