@@ -1,6 +1,6 @@
 ---
 layout: post
-title: 'DNS Sinkhole krok po kroku'
+title: 'DNS Sinkhole'
 description: "Mechanizm przechwytywania żądań DNS w celu ochrony Twojej organizacji i użytkowników."
 date: 2020-10-03 10:47:45
 categories: [publications]
