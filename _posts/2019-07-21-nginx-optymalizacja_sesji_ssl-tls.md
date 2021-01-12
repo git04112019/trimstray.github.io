@@ -11,19 +11,29 @@ toc: true
 last_modified_at: 2020-06-10 00:00:00 +0000
 ---
 
-Domyślnie konfiguracja sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji, która eliminuje ten problem. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
+Domyślna konfiguracji sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji, która eliminuje ten problem. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
 
 Na przykład, aby zmniejszyć koszty obliczeń kryptograficznych i podróży komunikatów w obie strony, stosuje się mechanizm wznawiania sesji TLS. Polega on na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni oznacza, że większość żądań nie wymaga pełnego uzgadniania, eliminuje opóźnienia i znacznie zmniejsza koszty obliczeniowe dla obu stron.
 
 Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Umożliwia to wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Oczywiście rodzi to także pewien dysonans, ponieważ aby skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), musimy upewnić się, że użyty materiał kryptograficzny związany z TLS nie jest w żaden sposób przechowywany.
 
-Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
+W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank).
+
+Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, _jakich wartości należy użyć, w przypadku n klientów?_. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że protokoły TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS (wznowienie sesji dla pierwszego z nich, bilety sesji dla drugiego). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
 ## Rozmiar i typ pamięci podręcznej
 
-Pierwszy z parametrów zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), który jest także odpowiednim, aby pamięć podręczna mogła być zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SSL jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych).
+Pierwszy z parametrów zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), aby pamięć podręczna była zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SS/TLS jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych). Ustawienie tego parametru jest wręcz kluczowe w przypadku dużej ilości kontekstów `server {...}` (wirtualnych hostów), ponieważ ich duża ilość może zwiększyć wykorzystanie pamięci.
 
-Włączenie buforowania sesji pomaga zmniejszyć obciążenie procesora oraz zwiększa wydajność z punktu widzenia klientów, ponieważ eliminuje potrzebę przeprowadzania nowego (i czasochłonnego) uzgadniania SSL/TLS przy każdym żądaniu.
+Celem pamięci podręcznej sesji SSL/TLS jest zmniejszenie użycia procesora oraz zwiększenie wydajność z punktu widzenia klientów, dzięki wyeliminowaniu konieczność ciągłej renegocjacji sesji — czyli przeprowadzania nowego (i czasochłonnego) uzgadniania SSL/TLS przy każdym żądaniu.
+
+Jeśli rozmiar pamięci podręcznej jest zbyt mały, może dojść do sytuacji, w której zabraknie miejsca na sesje dla nowych klientów — w najgorszym przypadku pamięć podręczna nie będzie działać skutecznie dla nowych sesji. W takiej sytuacji, w celu zwolnienia miejsca, NGINX spróbuje usunąć przechowywane w pamięci sesje, które nie wygasły i które są nadal w niej przechowywane (nie zawsze jednak tak się dzieje, np. ze względu na to, że różne sesje mogą zajmować różną przestrzeń adresową). Taka sytuacja może powodować poniższe alerty:
+
+```
+2020/01/22 10:11:13 [alert] 16517#100701: *2144157744 could not allocate new session in SSL session shared cache "NGX_SSL_CACHE" while SSL handshaking [...]
+```
+
+Informacja ta mówi o tym, że NGINX nie był w stanie przydzielić nowej sesji we współdzielonej pamięci podręcznej SSL/TLS i nie powoduje błędów dla klientów. Jedyny skutkiem ubocznym jest to, że klienci, którzy ponownie wykonują połączenie, ponoszą niewielką utratę wydajności, ponieważ nie mają wznowienia sesji SSL. Taka sytuacja może się zdarzyć, jeśli pamięć podręczna jest pełna, a NGINX nie był w stanie zwolnić wystarczającej ilości miejsca, usuwając ostatnio używaną sesję. Rozwiązaniem jest zmniejszenie limitów czasu sesji (parametr: `ssl_session_timeout`) lub zwiększenie rozmiaru pamięci współdzielonej, aby uniknąć przepełnienia. W ten sposób sesje wygasają i zostają usunięte z pamięci podręcznej, zanim zostanie ona przepełniona.
 
 Oczywiście nie ma róży bez kolców. Jednym z powodów, dla których nie należy używać bardzo dużej pamięci podręcznej, jest to, że większość implementacji nie usuwa z niej żadnych rekordów. Nawet wygasłe sesje mogą nadal się w niej znajdować i można je odzyskać!
 
@@ -51,7 +61,7 @@ W tym miejscu chciałbym zacytować wypowiedź twórcy serwisu [Hardenize](https
   </em>
 </p>
 
-Myślę, że wartość 4h jest rozsądną i jedną z optymalnych wartości.
+Na przykład zmiana czasu buforowania sesji z 10 minut na 24 godziny oznacza, że sesje będą zużywać 144 razy więcej w pamięci podręcznej. Myślę, że wartość 4h jest rozsądną i jedną z optymalnych wartości. Przy jej ustawieniu pomyśl jednak, jak długo dany klient będzie przeglądał strony w Twoim serwisie.
 
 Przykład konfiguracji:
 
@@ -103,7 +113,7 @@ Oficjalna dokumentacja: [ssl_session_tickets](http://nginx.org/en/docs/http/ngx_
 
 ## Rozmiar bufora danych
 
-Parametr ten odpowiada za kontrolę rozmiaru rekordu (rozmiaru bufora) przesyłanych danych za pomocą protokołu TLS. Klient może odszyfrować dane dopiero po otrzymaniu pełnego rekordu, zaś jego rozmiar może mieć znaczący wpływ na wydajność aplikacji w czasie ładowania strony. Jest to jeden z tych parametrów, dla którego spotkać można różne wartości i wyciągnąć wniosek, że idealny rozmiar nie istnieje. Spowodowane jest to pewną niejednoznacznością oraz problemami występującymi w sieci, która wykorzystuje protokół TCP.
+Parametr ten odpowiada za kontrolę rozmiaru rekordu (rozmiaru bufora) przesyłanych danych za pomocą protokołu TLS i nie ma żadnego związku z buforowaniem sesji. Klient może odszyfrować dane dopiero po otrzymaniu pełnego rekordu, zaś jego rozmiar może mieć znaczący wpływ na wydajność aplikacji w czasie ładowania strony. Długość sesji może się różnić w zależności od wynegocjowanego rozmiaru klucza, różnych negocjowanych rozszerzeń TLS i tak dalej. Jest to jeden z tych parametrów, dla którego spotkać można różne wartości i wyciągnąć wniosek, że idealny rozmiar nie istnieje. Spowodowane jest to pewną niejednoznacznością oraz problemami występującymi w sieci, która wykorzystuje protokół TCP.
 
 Aby dostosować wartość tego parametru, należy pamiętać m.in. o rezerwacji miejsca na różne opcje TCP (znaczniki czasu, skalowanie okna czy opcje selektywnego potwierdzania, tj. [SACK](https://www.icir.org/floyd/sacks.html)), które mogą zajmować do 40 bajtów. Uwzględnić należy także rozmiar rekordów TLS (pamiętaj, że uścisk dłoni jest pełen małych pakietów), który zmienia się w zależności od wynegocjowanego szyfru między klientem a serwerem (średnio od 20 do 60 bajtów jako narzut protokołu TLS). Istotne jest także to, że przeglądarka (klient) może korzystać z danych dopiero po całkowitym otrzymaniu rekordu TLS, stąd wartość tego parametru powinna być mniej więcej taka, jak rozmiar segmentu TCP.
 
