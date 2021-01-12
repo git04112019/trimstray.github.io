@@ -8,7 +8,7 @@ tags: [http, https, ssl, tls, nginx, best-practices, performance, session, cache
 comments: true
 favorite: false
 toc: true
-last_modified_at: 2020-06-10 00:00:00 +0000
+last_modified_at: 2021-01-11 00:00:00 +0000
 ---
 
 Domyślna konfiguracji sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji, która eliminuje ten problem. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
@@ -30,7 +30,7 @@ Celem pamięci podręcznej sesji SSL/TLS jest zmniejszenie użycia procesora ora
 Jeśli rozmiar pamięci podręcznej jest zbyt mały, może dojść do sytuacji, w której zabraknie miejsca na sesje dla nowych klientów — w najgorszym przypadku pamięć podręczna nie będzie działać skutecznie dla nowych sesji. W takiej sytuacji, w celu zwolnienia miejsca, NGINX spróbuje usunąć przechowywane w pamięci sesje, które nie wygasły i które są nadal w niej przechowywane (nie zawsze jednak tak się dzieje, np. ze względu na to, że różne sesje mogą zajmować różną przestrzeń adresową). Taka sytuacja może powodować poniższe alerty:
 
 ```
-2020/01/22 10:11:13 [alert] 16517#100701: *2144157744 could not allocate new session in SSL session shared cache "NGX_SSL_CACHE" while SSL handshaking [...]
+[alert] [...] could not allocate new session in SSL session shared cache "NGX_SSL_CACHE" while SSL handshaking [...]
 ```
 
 Informacja ta mówi o tym, że NGINX nie był w stanie przydzielić nowej sesji we współdzielonej pamięci podręcznej SSL/TLS i nie powoduje błędów dla klientów. Jedyny skutkiem ubocznym jest to, że klienci, którzy ponownie wykonują połączenie, ponoszą niewielką utratę wydajności, ponieważ nie mają wznowienia sesji SSL. Taka sytuacja może się zdarzyć, jeśli pamięć podręczna jest pełna, a NGINX nie był w stanie zwolnić wystarczającej ilości miejsca, usuwając ostatnio używaną sesję. Rozwiązaniem jest zmniejszenie limitów czasu sesji (parametr: `ssl_session_timeout`) lub zwiększenie rozmiaru pamięci współdzielonej, aby uniknąć przepełnienia. W ten sposób sesje wygasają i zostają usunięte z pamięci podręcznej, zanim zostanie ona przepełniona.
