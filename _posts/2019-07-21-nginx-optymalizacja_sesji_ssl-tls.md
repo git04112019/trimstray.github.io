@@ -155,7 +155,9 @@ Tym samym można przyjąć: <span class="h-b">1500 bajtów (MTU) - 40 bajtów (I
 
 Spakowanie każdego rekordu TLS do dedykowanego pakietu powoduje dodatkowe obciążenie związane z tworzeniem ramek i prawdopodobnie zajdzie potrzeba ustawienia większych rozmiarów rekordów (większy rozmiar rekordu optymalizuje przepustowość), jeśli przesyłasz strumieniowo większe (i mniej wrażliwe na opóźnienia) dane.
 
-Jednak im większy rozmiar rekordu TLS, tym większe prawdopodobieństwo, że możemy ponieść dodatkowy koszt z powodu retransmisji TCP lub „przepełnienia” okna TCP (ang. _TCP congestion window_). Rozwiązanie jest w miarę proste i polega na wysyłaniu mniejszych rekordów tak, aby pasowały do jednego segmentu TCP. Jeśli okno przeciążenia TCP jest małe, tj. podczas powolnego startu sesji (ang. _TCP Slow Start_) lub jeśli wysyłamy interaktywne dane, które powinny zostać przetworzone jak najszybciej (czyli większość ruchu HTTP), wówczas mały rozmiar rekordu pomaga zmniejszyć kosztowne opóźnienie związane z opóźnieniami jeszcze innej warstwy buforowania.
+Gdzie pojawiają się ograniczenia? W przypadku typowego serwera HTTP wysyła on dane do warstwy TLS, która z kolei tworzy rekord o danym rozmiarze (dla NGINX jest to 16 KB), a następnie przekazuje go do stosu TCP. Jednak im większy rozmiar rekordu TLS, tym większe prawdopodobieństwo, że możemy ponieść dodatkowy koszt z powodu retransmisji TCP lub „przepełnienia” okna TCP (ang. _TCP congestion window_), co może spowodować buforowanie danych po stronie klienta.
+
+Rozwiązanie jest w miarę proste i polega na wysyłaniu mniejszych rekordów tak, aby pasowały do jednego segmentu TCP. Jeśli okno przeciążenia TCP jest małe, tj. podczas powolnego startu sesji (ang. _TCP Slow Start_) lub jeśli wysyłamy interaktywne dane, które powinny zostać przetworzone jak najszybciej (czyli większość ruchu HTTP), wówczas mały rozmiar rekordu pomaga zmniejszyć kosztowne opóźnienie związane z opóźnieniami jeszcze innej warstwy buforowania.
 
 W dokumentacji serwera NGINX znajduje się następujące zalecenie:
 
