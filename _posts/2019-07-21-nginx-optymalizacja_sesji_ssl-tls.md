@@ -8,18 +8,18 @@ tags: [http, https, ssl, tls, nginx, best-practices, performance, session, cache
 comments: true
 favorite: false
 toc: true
-last_modified_at: 2021-01-11 00:00:00 +0000
+last_modified_at: 2021-01-17 00:00:00 +0000
 ---
 
-Domyślna konfiguracji sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji, która eliminuje ten problem. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
+Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że protokoły TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS, tj. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
-Na przykład, aby zmniejszyć koszty obliczeń kryptograficznych i podróży komunikatów w obie strony, stosuje się mechanizm wznawiania sesji TLS. Polega on na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni oznacza, że większość żądań nie wymaga pełnego uzgadniania, eliminuje opóźnienia i znacznie zmniejsza koszty obliczeniowe dla obu stron.
+Faktem jest, że domyślna konfiguracja sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
 
-Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Umożliwia to wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Oczywiście rodzi to także pewien dysonans, ponieważ aby skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), musimy upewnić się, że użyty materiał kryptograficzny związany z TLS nie jest w żaden sposób przechowywany.
+Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu zmniejszenia kosztów obliczeń kryptograficznych i podróży komunikatów w obie strony. Polega on na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni oznacza, że większość żądań nie wymaga pełnego uzgadniania, eliminuje opóźnienia i znacznie zmniejsza koszty obliczeniowe dla obu stron.
+
+Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Zaimplementowanie tego mechanizmu umożliwia wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Możesz zadać słuszne pytanie: w jaki sposób w takim razie skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), skoro musimy zapewnić, że użyty materiał kryptograficzny związany z TLS nie będzie w żaden sposób przechowywany?
 
 W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank).
-
-Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, _jakich wartości należy użyć, w przypadku n klientów?_. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że protokoły TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS (wznowienie sesji dla pierwszego z nich, bilety sesji dla drugiego). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
 ## Rozmiar i typ pamięci podręcznej
 
@@ -34,6 +34,14 @@ Jeśli rozmiar pamięci podręcznej jest zbyt mały, może dojść do sytuacji, 
 ```
 
 Informacja ta mówi o tym, że NGINX nie był w stanie przydzielić nowej sesji we współdzielonej pamięci podręcznej SSL/TLS i nie powoduje błędów dla klientów. Jedyny skutkiem ubocznym jest to, że klienci, którzy ponownie wykonują połączenie, ponoszą niewielką utratę wydajności, ponieważ nie mają wznowienia sesji SSL. Taka sytuacja może się zdarzyć, jeśli pamięć podręczna jest pełna, a NGINX nie był w stanie zwolnić wystarczającej ilości miejsca, usuwając ostatnio używaną sesję. Rozwiązaniem jest zmniejszenie limitów czasu sesji (parametr: `ssl_session_timeout`) lub zwiększenie rozmiaru pamięci współdzielonej, aby uniknąć przepełnienia. W ten sposób sesje wygasają i zostają usunięte z pamięci podręcznej, zanim zostanie ona przepełniona.
+
+Co niezwykle istotne, parametr ten jest ściśle związany z opcją odpowiedzialną za [czas życia parametrów sesji]({{ site.url }}/posts/2019-07-21-nginx-optymalizacja_sesji_ssl-tls/#czas-życia-parametrów-sesji). Oficjalna dokumentacja podaje przykład i tłumaczy tą zależność jak poniżej:
+
+<p class="ext">
+  <em>
+    When you increase the timeout, the cache needs to be bigger to accommodate the larger number of cached parameters that results. For the 4-hour timeout in the following example, a 20-MB cache is appropriate [...] If the timeout length is increased, you need a larger cache to store sessions, for example, 20 MB [...]
+  </em>
+</p>
 
 Oczywiście nie ma róży bez kolców. Jednym z powodów, dla których nie należy używać bardzo dużej pamięci podręcznej, jest to, że większość implementacji nie usuwa z niej żadnych rekordów. Nawet wygasłe sesje mogą nadal się w niej znajdować i można je odzyskać!
 
@@ -72,6 +80,28 @@ ssl_session_timeout 4h;
 ```
 
 Oficjalna dokumentacja: [ssl_session_timeout](http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_session_timeout).
+
+## Limit czasu na zakończenie uzgadniania
+
+Jak doskonale wiemy, sesja SSL/TLS rozpoczynają się od wymiany wiadomości nazywanej uzgadnianiem. Uzgadnianie umożliwia wymianę wielu niezwykle istotnych informacji między klientem a serwerem do poprawnego zestawienia sesji SSL/TLS. W przypadku serwera NGINX domyślny limit czasu do zakończenia lub przekroczenia pierwszej wymiany (niekompletnego uzgadniania protokołu) wynosi 60 sekund.
+
+Pamiętajmy, że cały proces powinien zająć ledwie ułamek sekundy, a w niektórych specyficznych przypadkach powinien potrwać maksymalnie kilka sekund. Moim zdaniem wartość 60s jest zbyt duża, ponieważ może zwiększyć podatność na ataki polegające na wyczerpaniu połączeń serwera przez niepowodzenie zakończenia (lub nawet uruchomienia) z użyciem protokołów SSL/TLS. Doprowadzi to najprawdopodobniej do większego zużycia pamięci, powolnej odpowiedź serwera i w ostateczności jego niedostępności.
+
+Dzięki temu parametrowi serwer zamyka połączenia, których zakończenie uzgadniania protokołu SSL/TLS trwa dłużej. Bez tego limitu, słabo lub nieodpowiednio skonfigurowany serwer po prostu czekałby w nieskończoność na zakończenie uzgadniania SSL/TLS.
+
+Z drugiej strony, w niektórych systemach wbudowanych o niższej mocy procesora, zwłaszcza przy wykorzystaniu dłuższych kluczy RSA, podczas wymiany odszyfrowanie może zająć więcej czasu. Ustawienie zbyt niskiej wartości może spowodować problemy połączenia z serwerem właśnie z powodu przekroczenia limitu czasu. Należy wtedy odpowiednio dostosować wartość, aby umożliwić korzystanie z najnowszych protokołów kryptograficznych tak często, jak to tylko możliwe (także starszym oraz działającym w mocno ograniczonych środowiskach klientom).
+
+Uważam też, że mając ustawioną niższą wartość (np. na 10s) konieczność jej zwiększenia pojawia się raczej w przypadku bardzo wolnych klientów i sieci. Powyższy limit uzgadniania SSL/TLS w pozostałych okolicznościach wskazuje raczej na problemy w innym miejscu.
+
+Przykład konfiguracji:
+
+```nginx
+# context: stream, server
+# default: 60s
+ssl_handshake_timeout 30s;
+```
+
+Oficjalna dokumentacja: [ssl_handshake_timeout](http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_handshake_timeout).
 
 ## Wznawianie sesji
 
