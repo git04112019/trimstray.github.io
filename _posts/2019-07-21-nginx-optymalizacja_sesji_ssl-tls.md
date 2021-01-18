@@ -21,6 +21,40 @@ Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeńs
 
 W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank).
 
+## Pierwszy bajt danych
+
+Rozważania zaczniemy od określenia, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_). Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajtu odebranych przez niego danych natomiast drugi odnosi się do czasu uzgadniania TLS. Jeżeli chodzi o TTFB, to wolny czas do pierwszego bajtu jest rozpoznawany po długim czasie oczekiwania na dane. Parametr ten powinien być jak najniższy, ponieważ jego wysoka wartość ujawnia jeden z dwóch podstawowych problemów:
+
+- złe warunki sieciowe między klientem a serwerem
+- wolno odpowiadająca aplikacja serwera
+
+Zgodnie z [Understanding Resource Timing - Slow Time to First Byte](https://developers.google.com/web/tools/chrome-devtools/network/understanding-resource-timing#slow_time_to_first_byte), aby rozwiązać problem wysokiego TTFB, najpierw powinniśmy zredukować połączenia sieciowe między klientem a serwerem (a przyczyn może być wiele, np. niezoptymalizowane reguły firewall'a czy problemy z tabelami routingu). W tym wypadku najlepiej jest uruchomić aplikację lokalnie i sprawdzić, czy nadal istnieje duży TTFB. Jeśli tak, aplikacja musi zostać zoptymalizowana. Może to oznaczać optymalizację zapytań do bazy danych, implementację pamięci podręcznej dla określonych części treści lub modyfikację konfiguracji serwera HTTP. Natomiast jeśli TTFB lokalnie jest niskie, problem najprawdopodobniej stanowią sieci między klientem a serwerem. Pamiętajmy jednak, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi.
+
+Poniższy diagram pokazuje, do czego odnoszą się poszczególne czasy w porównaniu z typowym połączeniem HTTP przez TLS 1.2 (konfiguracja TLS 1.3 wymaga jednej podróży w obie strony mniej) oraz jest odzwierciedleniem, w jaki sposób zmienne narzędzia Curl odnoszą się do różnych etapów transferu danych dla typowego połączenia:
+
+<p align="center">
+  <img src="/assets/img/posts/ttfb_curl.png">
+</p>
+
+Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`) i pozwala określić czy wąskim gardłem jest aplikacja, czy wolna negocjacja TLS serwera i pewne opóźnienia w sieci.
+
+Dla nas jest to najbardziej interesujący parametr. Przyjrzyjmy się jednak najpierw zmiennej <span class="h-b">time_starttransfer</span>, która określa czas tuż przed odczytaniem pierwszego bajtu z sieci (tak naprawdę jeszcze nie został odczytany) — czyli bez narzutu połączenia. Czas pierwszego bajtu (TTFB) możemy wyliczyć za pomocą `%{time_starttransfer} - %{time_appconnect}` i obejmuje on podróż w obie strony przez sieć. Aby obliczyć, jak długo serwer spędził na żądaniu (czyli ile czasu poświęcił na generowaniu treści), możemy wykorzystać wzór `TTFB - (%{time_connect} - %{time_namelookup})`.
+
+Oczywiście oprócz Curl'a do wyliczenia wszystkich wartości możesz użyć przeglądarki Chrome i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/)). Do uzyskania parametru TTFB możesz też użyć prostego narzędzia o nazwie [ttfb.sh](https://github.com/jaygooby/ttfb.sh), którego wynik działania prezentuje się jak poniżej:
+
+```
+./ttfb -v -n 5 https://badssl.com
+DNS lookup: 0.078838 TLS handshake: 0.746465 TTFB including connection: 0.874749 TTFB: .128284 Total time: 0.874925
+DNS lookup: 0.002692 TLS handshake: 0.649374 TTFB including connection: 0.777400 TTFB: .128026 Total time: 0.777545
+DNS lookup: 0.002123 TLS handshake: 0.652230 TTFB including connection: 0.780659 TTFB: .128429 Total time: 0.780873
+DNS lookup: 0.002334 TLS handshake: 0.637931 TTFB including connection: 0.766321 TTFB: .128390 Total time: 0.766513
+DNS lookup: 0.002227 TLS handshake: 0.643825 TTFB including connection: 0.772996 TTFB: .129171 Total time: 0.773133
+```
+
+Natomiast co w przypadku protokołów SSL/TLS? Tutaj optymalizacji może być kilka. Do najprostszych można zaliczyć rozmiar certyfikatu i klucza (ok. 5 KB dla 2048-bitowego klucza). W przypadku protokołu HTTPS należy dodać dwa kolejne RTT, aby negocjować wszystkie wymagane parametry. W przypadku serwera NGINX w wersji niższej niż 1.5.6 miała pewien feler, otóż certyfikaty o rozmiarze przekraczającym 4 KB wiązały się z dodatkową podróżą w obie strony, zamieniając uzgadnianie w obie strony w trzy transakcje w obie strony. Co gorsza, w niektórych specyficznych przypadkach może dojść do przekroczenia krawędzi w stosie TCP, co powodowało, że klient potwierdza kilka pierwszych pakietów z serwera, ale następnie czeka, zanim wyzwoli opóźnione potwierdzenie ACK dla ostatniego segmentu.
+
+Te, jak i pozostałe wskazówki, które za chwilę omówię, pozwolą poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB i zmniejszonego opóźnienia.
+
 ## Rozmiar i typ pamięci podręcznej
 
 Pierwszy z parametrów zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), aby pamięć podręczna była zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SS/TLS jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych). Ustawienie tego parametru jest wręcz kluczowe w przypadku dużej ilości kontekstów `server {...}` (wirtualnych hostów), ponieważ ich duża ilość może zwiększyć wykorzystanie pamięci.
@@ -202,23 +236,24 @@ Jak już pewnie zauważyłeś, cierpią na tym najbardziej protokoły znajdując
 
 Statyczny rozmiar rekordu wprowadza kompromis między opóźnieniem a przepustowością - mniejsze rekordy są dobre dla opóźnienia, ale szkodzą przepustowości i obciążeniu procesora. Małe rekordy powodują nadmierne obciążenia, duże rekordy powodują zwiększone opóźnienia — nie ma jednej wartości dla optymalnego rozmiaru rekordu. Zamiast tego w przypadku aplikacji internetowych najlepszą strategią jest dynamiczne dostosowywanie jego rozmiaru (tak, aby uzyskać najlepszą wydajność) w zależności od stanu połączenia TCP.
 
-Dynamiczne rozmiary rekordów skalowane w zależności od stanu połączenia TLS, eliminują tak naprawdę dwa istotne problemy:
+Dynamiczne rozmiary rekordów skalowane w zależności od stanu połączenia TLS, eliminują tak naprawdę trzy istotne problemy:
 
-- korzystanie z rekordu wielkości pakietu gwarantuje, że dostarczamy najlepszy pierwszy bajt danych wysłanych przez serwer (ang. _TTFB - Time to first byte_)
 - minimalizuje koszty ogólne procesora (po stronie klienta i serwera) w przypadku mniejszych rekordów
+- dostarczamy najlepszy pierwszy bajt danych (TTFB) wysłanych przez serwer w przypadku rekordu wielkości pakietu
+- w większości przypadków pozwala zredukować dodatkowe obiegi dla TTTFB (ang. _TLS Time to first byte_)
 
-Ogólnie rzecz biorąc, ma to na celu optymalizację przyrostowego dostarczania małych plików, a także w przypadku dużych pobrań, w których priorytetem jest ogólna przepustowość. W tym miejscu, bardzo polecam świetny artykuł o tytule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/).
+Ogólnie rzecz biorąc, ma to na celu optymalizację przyrostowego dostarczania małych plików, jednak sprawdza się także w przypadku dużych pobrań, w których priorytetem jest ogólna przepustowość.
 
 W idealnym scenariuszu sytuacja powinna wyglądać tak:
 
 - nowe połączenia domyślnie mają mały rozmiar rekordu
 - każdy rekord mieści się w pakiecie TCP
-- pakiety są opróżniane na granicach rekordów
+- pakiety są opróżniane (wysyłane) na granicach rekordów
 - serwer śledzi liczbę zapisanych bajtów od czasu resetu i znacznik czasu ostatniego zapisu
 - jeśli zapisano pewien próg danych (zastosowana strategia polega zasadniczo na użyciu małych rekordów TLS, które pasują do jednego segmentu TCP dla pierwszych ~1MB danych), to zwiększ rozmiar rekordu do 16 KB
 - jeśli znacznik czasu ostatniego zapisu został przekroczony, zresetuj licznik wysłanych danych
 
-W celu rozwiązania tych problemów, inżynierowie Cloudflare stworzyli [poprawkę](https://github.com/cloudflare/sslconfig/blob/master/patches/nginx__dynamic_tls_records.patch) domyślnego mechanizmu, która dodaje obsługę dynamicznego rozmiaru rekordów TLS (wprowadza inteligentniejszą strategię) w serwerze NGINX (dostępna jest ona np. we FreeBSD jako jedna z opcji do wyboru podczas kompilacji).
+W celu rozwiązania tych problemów, inżynierowie Cloudflare stworzyli [poprawkę](https://github.com/cloudflare/sslconfig/blob/master/patches/nginx__dynamic_tls_records.patch) domyślnego mechanizmu, która dodaje obsługę dynamicznego rozmiaru rekordów TLS i wprowadza inteligentniejszą strategię zarządzania tym mechanizmem z poziomu serwera NGINX (dostępna jest ona np. we FreeBSD jako jedna z opcji do wyboru podczas kompilacji).
 
 Krótko mówiąc, umożliwia ona, aby zamiast statycznego rozmiaru bufora ustalonego z poziomu `ssl_buffer_size` (ustalony rozmiar rekordu TLS z domyślną wartością 16 KB), początkowe żądania zmieściły się w najmniejszej możliwej liczbie segmentów TCP, a następnie były zwiększane w zależności od obciążenia sieci. Rozpoczynanie od małego rozmiaru rekordu pomaga dopasować rozmiar rekordu do segmentów wysyłanych przez TCP na początku połączenia. Po uruchomieniu połączenia rozmiar rekordu można odpowiednio dostosować do panujących warunków w sieci.
 
