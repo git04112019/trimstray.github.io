@@ -28,21 +28,21 @@ Kończąc ten wstęp, pamiętaj, że obsesja na punkcie wartości i skrupulatneg
 Uzgadnianie TLS ma wiele odmian i zależy pamiętać, że wpływ na narzut będzie mieć zmienny rozmiar większości wiadomości. W przypadku typowego połączenia cały proces uzgadniania wygląda jak poniżej:
 
 ```
-  Client                                               Server
+  Client                                            Server
 
-  ClientHello                  -------->
-                                                  ServerHello
-                                                  Certificate
-                               <--------      ServerHelloDone
+  ClientHello             -------->
+                                               ServerHello
+                                               Certificate
+                          <--------        ServerHelloDone
   ClientKeyExchange
   [ChangeCipherSpec]
-  Finished                     -------->
-                                           [ChangeCipherSpec]
-                               <--------             Finished
-  Application Data             <------->     Application Data
+  Finished                -------->
+                                        [ChangeCipherSpec]
+                          <--------               Finished
+  Application Data        <------->       Application Data
 ```
 
-Przejrzyjmy wszystkie wiadomości i rozważmy ich rozmiary:
+Omówmy teraz wszystkie wiadomości i rozważmy ich rozmiary:
 
 - <span class="h-a">ClientHello</span> - średni rozmiar początkowej wiadomości klienta to około 160 do 170 bajtów. Będzie się różnić w zależności od liczby zestawów szyfrów wysłanych przez klienta, a także liczby obecnych rozszerzeń. Jeśli używane jest wznawianie sesji, należy dodać kolejne 32 bajty w polu identyfikator sesji
 
@@ -66,12 +66,12 @@ Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmia
 24 bajty         = Finished (2 x 12 bajtów dla TLSv1.2 )
 2 bajty          = ChangeCipherSpec (2 x 1 bajt)
 20 bajtów        = TLS Record (4 x 5 bajtów)
-28 bajtów        = TLS Handshake (7x 4 bajty)
+28 bajtów        = TLS Handshake (7 x 4 bajty)
 
 170 + 75 + 4500 + 130 + 2 + 20 + 28 + 24 = 4949 bajtów
 ```
 
-Stąd całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku średnio około 5 KB. Widzimy też, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Co ciekawe, po ustanowieniu sesji TLS można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 330 bajtów. Pojawia się tutaj jeszcze całkowity narzut obciążenia sieci związany z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy MAC).
+Stąd całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku średnio około 5 KB. Widzimy też, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Co ciekawe, po ustanowieniu sesji TLS można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 330 bajtów. Pojawia się tutaj jeszcze całkowity narzut obciążenia sieci związany z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy algorytmu MAC).
 
 Pamiętaj, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC. Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
 
