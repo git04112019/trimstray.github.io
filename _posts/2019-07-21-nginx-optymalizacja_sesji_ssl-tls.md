@@ -23,9 +23,59 @@ W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunas
 
 Kończąc ten wstęp, pamiętaj, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów jest zdecydowanie czymś przesadzonym. Oczywiście optymalizacja protokołu TLS jest ważna i powinniśmy chociaż wiedzieć, który parametr, za co odpowiada i jakie niesie konsekwencje jego zmiana. Moim zdaniem i tak najważniejszą rzeczą jest dostarczanie witryny, zapewniając minimalną ilości danych, które będzie musiał pobrać klient.
 
-## Pierwszy bajt danych i HTTPS
+## Narzut TLS i pierwszy bajt danych
 
-Rozważania zaczniemy od określenia, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_). Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajtu odebranych przez niego danych natomiast drugi odnosi się do czasu uzgadniania TLS. Jeżeli chodzi o TTFB, to wolny czas do pierwszego bajtu jest rozpoznawany po długim czasie oczekiwania na dane. Parametr ten powinien być jak najniższy, ponieważ jego wysoka wartość ujawnia jeden z dwóch podstawowych problemów:
+Uzgadnianie TLS ma wiele odmian i zależy pamiętać, że wpływ na narzut będzie mieć zmienny rozmiar większości wiadomości. W przypadku typowego połączenia cały proces uzgadniania wygląda jak poniżej:
+
+```
+  Client                                               Server
+
+  ClientHello                  -------->
+                                                  ServerHello
+                                                  Certificate
+                               <--------      ServerHelloDone
+  ClientKeyExchange
+  [ChangeCipherSpec]
+  Finished                     -------->
+                                           [ChangeCipherSpec]
+                               <--------             Finished
+  Application Data             <------->     Application Data
+```
+
+Przejrzyjmy wszystkie wiadomości i rozważmy ich rozmiary:
+
+- <span class="h-a">ClientHello</span> - średni rozmiar początkowej wiadomości klienta to około 160 do 170 bajtów. Będzie się różnić w zależności od liczby zestawów szyfrów wysłanych przez klienta, a także liczby obecnych rozszerzeń. Jeśli używane jest wznawianie sesji, należy dodać kolejne 32 bajty w polu identyfikator sesji
+
+- <span class="h-a">ServerHello</span> - ta wiadomość jest nieco bardziej statyczna niż poprzednia, jednak nadal ma zmienny rozmiar ze względu na dostępne rozszerzenia protokołu TLS. Średni rozmiar to 70 do 75 bajtów
+
+- <span class="h-a">Certificate</span> - ta wiadomość jest najbardziej zróżnicowana pod względem rozmiaru. Wiadomość zawiera certyfikat serwera, a także wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów (bez certyfikatu głównego). Ponieważ rozmiary certyfikatów różnią się znacznie w zależności od użytych parametrów i kluczy, możemy przyjąć średnio 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą znacznie mniejszy rozmiar). Innym zmiennym czynnikiem jest długość łańcucha certyfikatów, stąd w przypadku trzech certyfikatów w łańcuchu daje to około 4.5 KB dla tej wiadomości
+
+- <span class="h-a">ClientKeyExchange</span> - przyjmijmy ponownie najczęściej używany przypadek, tj. certyfikat serwera RSA, który odpowiada rozmiarowi 130 bajtów tej wiadomości
+
+- <span class="h-a">ChangeCipherSpec</span> - stały rozmiar o wielkości 1 bajta (technicznie nie jest to komunikat uzgadniania)
+
+- <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
+
+Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Podsumowując:
+
+```
+170 bajtów       = ClientHello
+75 bajtów        = ServerHello
+4500 bajtów      = Certificate (w przypadku trzech certyfikatów w łańcuchu gdzie 1500 bajtów na certyfikat)
+130 bajtów       = ClientKeyExchange
+24 bajty         = Finished (2 x 12 bajtów dla TLSv1.2 )
+2 bajty          = ChangeCipherSpec (2 x 1 bajt)
+20 bajtów        = TLS Record (4 x 5 bajtów)
+28 bajtów        = TLS Handshake (7x 4 bajty)
+
+170 + 75 + 4500 + 130 + 2 + 20 + 28 + 24 = 4949 bajtów
+```
+
+Stąd całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku średnio około 5 KB. Widzimy też, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Co ciekawe, po ustanowieniu sesji TLS można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 330 bajtów. Pojawia się tutaj jeszcze całkowity narzut obciążenia sieci związany z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy MAC).
+
+Pamiętaj, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC. Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
+
+Powinniśmy zadać sobie teraz pytanie, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_). Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajtu odebranych przez niego danych natomiast drugi odnosi się do czasu uzgadniania TLS. Jeżeli chodzi o TTFB, to wolny czas do pierwszego bajtu jest rozpoznawany po długim czasie oczekiwania na dane. Parametr ten powinien być jak najniższy, ponieważ jego wysoka wartość ujawnia jeden z dwóch podstawowych problemów:
 
 - złe warunki sieciowe między klientem a serwerem
 - wolno odpowiadająca aplikacja serwera
@@ -53,11 +103,15 @@ DNS lookup: 0.002334 TLS handshake: 0.637931 TTFB including connection: 0.766321
 DNS lookup: 0.002227 TLS handshake: 0.643825 TTFB including connection: 0.772996 TTFB: .129171 Total time: 0.773133
 ```
 
-Natomiast co w przypadku protokołów SSL/TLS? Tutaj optymalizacji może być kilka. Do najprostszych można zaliczyć rozmiar certyfikatu i klucza (ok. 5 KB dla 2048-bitowego klucza). W przypadku protokołu HTTPS należy dodać dwa kolejne RTT, aby negocjować wszystkie wymagane parametry. W przypadku serwera NGINX w wersji niższej niż 1.5.6 miała pewien feler, otóż certyfikaty o rozmiarze przekraczającym 4 KB wiązały się z dodatkową podróżą w obie strony, zamieniając uzgadnianie w obie strony w trzy transakcje w obie strony. Co gorsza, w niektórych specyficznych przypadkach może dojść do przekroczenia krawędzi w stosie TCP, co powodowało, że klient potwierdza kilka pierwszych pakietów z serwera, ale następnie czeka, zanim wyzwoli opóźnione potwierdzenie ACK dla ostatniego segmentu.
+Natomiast co w przypadku protokołów SSL/TLS? Tutaj optymalizacji może być kilka, a najbardziej zróżnicowaną częścią w przypadku tych protokołów są certyfikaty, ponieważ oprócz ich rozmiaru, pamiętajmy o ich liczbie (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Ponieważ rozmiary certyfikatów różnią się znacznie w zależności od użytych parametrów i kluczy, przyjąłbym średnio 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar).
+
+Jak wyżej wspomniałem, możesz pomyśleć o rozmiarze certyfikatu i klucza jako głównej optymalizacji. Jednak w przypadku protokołu HTTPS należy dodać dwa kolejne RTT, aby negocjować wszystkie wymagane parametry. W przypadku serwera NGINX w wersji niższej niż 1.5.6 miała pewien feler, otóż certyfikaty o rozmiarze przekraczającym 4 KB wiązały się z dodatkową podróżą w obie strony, zamieniając uzgadnianie w obie strony w trzy transakcje w obie strony. Co gorsza, w niektórych specyficznych przypadkach może dojść do przekroczenia krawędzi w stosie TCP, co powodowało, że klient potwierdza kilka pierwszych pakietów z serwera, ale następnie czeka, zanim wyzwoli opóźnione potwierdzenie ACK dla ostatniego segmentu.
+
+Myślę, że należy też mieć na uwadze wersję protokołu HTTP. Pamiętajmy, że HTTP/2 używa jednego połączenia do serwera, zamiast jednego połączenia na żądanie zasobu oraz wymaga tylko jednego kosztownego uzgadniania TLS. Co więcej, dzięki multipleksowaniu maksymalizujemy wykorzystanie pojedynczego połączenie. Oznacza to znacznie mniejszą potrzebę czasochłonnej konfiguracji połączenia, co jest szczególnie korzystne w przypadku TLS, ponieważ tworzenie połączeń TLS jest szczególnie wymagające czasowo.
 
 Pojawia się tutaj jeszcze jeden ciekawy problem, tj. pierwszych 14 KB danych, które odbiera przeglądarka. Autorem wyjaśnienia jest [Barry Pollard](https://twitter.com/tunetheweb/), autor świetnej książki [HTTP/2 in Action](https://www.manning.com/books/http2-in-action) dlatego pozwolę sobie przetłumaczyć najistotniejsze fragmenty. Dokładne przedstawienie znajduje się w artykule [Critical Resources and the First 14 KB - A Review](https://www.tunetheweb.com/blog/critical-resources-and-the-first-14kb/). Mimo tego, że nie jest on ściśle związanych z protokołem TLS to warto się z nim zapoznać. Pamiętajmy jednak, że TLS wymaga, aby klienci odpowiadali podczas uzgadniania, co oznacza, że mogą również potwierdzać niektóre z wcześniej wysłanych pakietów TCP w tym samym czasie, zwiększając rozmiar okna przeciążenia, zwiększając opisany przez autora limit 10 pakietów. Widzisz, że pole do optymalizacji jest tak naprawdę na każdej warstwie i dla każdego protokołu.
 
-Te, jak i pozostałe wskazówki, które za chwilę omówię, pozwolą poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB i zmniejszonego opóźnienia.
+Te, jak i pozostałe najbardziej znane wskazówki, które za chwilę omówię, pozwolą poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB i zmniejszonego opóźnienia.
 
 ## Rozmiar i typ pamięci podręcznej
 
@@ -125,7 +179,7 @@ Oficjalna dokumentacja: [ssl_session_timeout](http://nginx.org/en/docs/http/ngx_
 
 Jak doskonale wiemy, sesja SSL/TLS rozpoczynają się od wymiany wiadomości nazywanej uzgadnianiem. Uzgadnianie umożliwia wymianę wielu niezwykle istotnych informacji między klientem a serwerem do poprawnego zestawienia sesji SSL/TLS. W przypadku serwera NGINX domyślny limit czasu do zakończenia lub przekroczenia pierwszej wymiany (niekompletnego uzgadniania protokołu) wynosi 60 sekund.
 
-Pamiętajmy, że cały proces powinien zająć ledwie ułamek sekundy, a w niektórych specyficznych przypadkach powinien potrwać maksymalnie kilka sekund. Moim zdaniem wartość 60s jest zbyt duża, ponieważ może zwiększyć podatność na ataki polegające na wyczerpaniu połączeń serwera przez niepowodzenie zakończenia (lub nawet uruchomienia) z użyciem protokołów SSL/TLS. Doprowadzi to najprawdopodobniej do większego zużycia pamięci, powolnej odpowiedź serwera i w ostateczności jego niedostępności.
+Pamiętajmy, że cały proces powinien zająć ledwie ułamek sekundy, a w niektórych specyficznych przypadkach powinien potrwać maksymalnie kilka sekund. Moim zdaniem wartość 60s jest zbyt duża, ponieważ może zwiększyć podatność na ataki polegające na wyczerpaniu połączeń serwera przez niepowodzenie zakończenia z użyciem protokołów SSL/TLS. Doprowadzi to najprawdopodobniej do większego zużycia pamięci, powolnej odpowiedź serwera i w ostateczności jego niedostępności.
 
 Dzięki temu parametrowi serwer zamyka połączenia, których zakończenie uzgadniania protokołu SSL/TLS trwa dłużej. Bez tego limitu, słabo lub nieodpowiednio skonfigurowany serwer po prostu czekałby w nieskończoność na zakończenie uzgadniania SSL/TLS.
 
@@ -146,6 +200,8 @@ Oficjalna dokumentacja: [ssl_handshake_timeout](http://nginx.org/en/docs/http/ng
 ## Wznawianie sesji
 
 Kolejną modyfikacją mogą być klucze sesji lub inaczej bilety sesji, które zostały dokładniej opisane w dokumencie [RFC 5077](https://tools.ietf.org/html/rfc5077) <sup>[IETF]</sup>. Zawierają one pełny stan sesji (w tym klucz wynegocjowany między klientem a serwerem czy wykorzystywane zestawy szyfrów), dzięki czemu zmniejszają obciążenie uścisku dłoni, który jak wiemy, jest najbardziej kosztowny w całym procesie uzgadniania. Taki mechanizm przydaje się szczególnie gdy dojdzie np. do zerwania sesji. Wszystkie informacje wymagane do kontynuowania sesji są tam zawarte, więc serwer może wznowić sesję, wykorzystując wcześniejsze parametry. Gdy klient obsługuje bilety sesji, serwer zaszyfruje klucz sesji kluczem, który posiada tylko serwer, kluczem szyfrowania biletu sesji (ang. _STEK - Session Ticket Encryption Key_) i wyśle go do klienta. Klient przechowuje ten zaszyfrowany klucz sesji, zwany biletem, wraz z odpowiednim kluczem sesji. Serwer tym samym zapomina o kliencie, umożliwiając wdrożenia bezstanowe.
+
+  > Jeżeli komunikat <span class="h-b">ChangeCipherSpec</span> pojawia się bezpośrednio po <span class="h-b">ServerHello</span>, oznacza to, że jest to sesja wznowiona (buforowana zarówno na kliencie, jak i na serwerze) lub wykorzystano bilet sesji. W sesjach wznowionych uwierzytelnienie certyfikatu serwera już miało miejsce, więc certyfikat(y) nie będą wymieniane.
 
 Przy kolejnym połączeniu, klient wysyła bilet wraz z parametrami początkowymi. Jeśli serwer nadal ma klucz szyfrowania biletu sesji, odszyfruje go, wyodrębni klucz sesji i zacznie go używać. Ustanawia to wznowione połączenie i oszczędza komunikację w obie strony, pomijając kluczowe (początkowe) negocjacje. W przeciwnym razie klient i serwer powrócą do normalnego uzgadniania. Widzimy, że cała dodatkowa obsługa odbywa się po stronie klienta.
 
