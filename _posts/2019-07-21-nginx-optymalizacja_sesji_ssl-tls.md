@@ -13,9 +13,13 @@ last_modified_at: 2021-01-18 00:00:00 +0000
 
 Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że protokoły TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS, tj. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
+<p align="center">
+  <img src="/assets/img/posts/tls_img_01.png">
+</p>
+
 Faktem jest, że domyślna konfiguracja sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
 
-Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu zmniejszenia kosztów obliczeń kryptograficznych i podróży komunikatów w obie strony. Polega on na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni oznacza, że większość żądań nie wymaga pełnego uzgadniania, eliminuje opóźnienia i znacznie zmniejsza koszty obliczeniowe dla obu stron.
+Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu zmniejszenia kosztów obliczeń kryptograficznych i podróży komunikatów w obie strony. Projektanci protokołu TLS byli świadomi, że wykonanie pełnej negocjacji jest dość kosztowne i wymaga dwóch obiegów sieci (cztery komunikaty), a także kosztownych operacji kryptograficznych. Z tego powodu główny sekret może być przechowywany przez obie strony w pamięci podręcznej sesji. Gdy klient łączy się ponownie, wystarczy, że przedstawi identyfikator sesji. Mechanizm ten, polega na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni pozwala uniknąć pełnego uzgadniania dla większości żądań, eliminując opóźnienia i znacznie zmniejszając koszty obliczeniowe dla obu stron.
 
 Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Zaimplementowanie tego mechanizmu umożliwia wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Możesz zadać słuszne pytanie: w jaki sposób w takim razie skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), skoro musimy zapewnić, że użyty materiał kryptograficzny związany z TLS nie będzie w żaden sposób przechowywany?
 
@@ -25,24 +29,13 @@ Kończąc ten wstęp, pamiętaj, że obsesja na punkcie wartości i skrupulatneg
 
 ## Narzut TLS i pierwszy bajt danych
 
-Uzgadnianie TLS ma wiele odmian i zależy pamiętać, że wpływ na narzut będzie mieć zmienny rozmiar większości wiadomości. W przypadku typowego połączenia cały proces uzgadniania wygląda jak poniżej:
+Przy przejściu na protokół HTTPS pojawia się pewne opóźnienie. Dzieje się tak, ponieważ początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Uzgadnianie TLS ma wiele odmian i zależy pamiętać, że dokładny narzut TLS zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości, a także różne wzorce ruchu. W przypadku typowego połączenia cały proces uzgadniania wygląda jak poniżej:
 
-```
-  Client                                            Server
+<p align="center">
+  <img src="/assets/img/posts/tls_handshake_rfc.png">
+</p>
 
-  ClientHello             -------->
-                                               ServerHello
-                                               Certificate
-                          <--------        ServerHelloDone
-  ClientKeyExchange
-  [ChangeCipherSpec]
-  Finished                -------->
-                                        [ChangeCipherSpec]
-                          <--------               Finished
-  Application Data        <------->       Application Data
-```
-
-Omówmy teraz wszystkie wiadomości i rozważmy ich rozmiary:
+Omówmy teraz najbardziej istotne części w kontekście ich rozmiarów:
 
 - <span class="h-a">ClientHello</span> - średni rozmiar początkowej wiadomości klienta to około 160 do 170 bajtów. Będzie się różnić w zależności od liczby zestawów szyfrów wysłanych przez klienta, a także liczby obecnych rozszerzeń. Jeśli używane jest wznawianie sesji, należy dodać kolejne 32 bajty w polu identyfikator sesji
 
@@ -56,26 +49,36 @@ Omówmy teraz wszystkie wiadomości i rozważmy ich rozmiary:
 
 - <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
 
-Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Podsumowując:
+Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Wygląda to tak:
 
 ```
 170 bajtów       = ClientHello
 75 bajtów        = ServerHello
-4500 bajtów      = Certificate (w przypadku trzech certyfikatów w łańcuchu gdzie 1500 bajtów na certyfikat)
+4500 bajtów      = ServerCertificate (w przypadku trzech certyfikatów w łańcuchu gdzie 1500 bajtów na certyfikat)
 130 bajtów       = ClientKeyExchange
-24 bajty         = Finished (2 x 12 bajtów dla TLSv1.2 )
+24 bajty         = ClientFinishedMessage (2 x 12 bajtów dla TLSv1.2 )
 2 bajty          = ChangeCipherSpec (2 x 1 bajt)
-20 bajtów        = TLS Record (4 x 5 bajtów)
-28 bajtów        = TLS Handshake (7 x 4 bajty)
+20 bajtów        = TLS Record Protocol (4 x 5 bajtów)
+28 bajtów        = TLS Handshake Protocol (7 x 4 bajty)
 
 170 + 75 + 4500 + 130 + 2 + 20 + 28 + 24 = 4949 bajtów
 ```
 
-Stąd całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku średnio około 5 KB. Widzimy też, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Co ciekawe, po ustanowieniu sesji TLS można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 330 bajtów. Pojawia się tutaj jeszcze całkowity narzut obciążenia sieci związany z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy algorytmu MAC).
+Stąd całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku średnio około 5 KB. Widzimy też, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Co ciekawe, po ustanowieniu sesji TLS można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 330 bajtów.
 
-Pamiętaj, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC. Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
+Pojawia się tutaj jeszcze całkowity narzut obciążenia sieci związany z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy algorytmu MAC). Po drugie, w zależności od używanych zestawów szyfrów, narzut TLS w czasie wykonywania jest różny (dlatego warto zastanowić się nad tymi wykorzystującymi krzywe eliptyczne). Szyfry blokowe zwykle powodują większe obciążenie w porównaniu do szyfrów strumieniowych pod względem ruchu (ze względu na wypełnienie). Obciążenie środowiska pod względem wykorzystania procesora jest również wyższe w porównaniu ze standardowym TCP, ponieważ w grę wchodzą operacje kryptograficzne, zwłaszcza zwiększając rozmiar kluczy RSA z 2048-bit do 4096-bit (pamiętajmy o kluczach ECDSA jako o dodatkowej optymalizacji).
 
-Powinniśmy zadać sobie teraz pytanie, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_). Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajtu odebranych przez niego danych natomiast drugi odnosi się do czasu uzgadniania TLS. Jeżeli chodzi o TTFB, to wolny czas do pierwszego bajtu jest rozpoznawany po długim czasie oczekiwania na dane. Parametr ten powinien być jak najniższy, ponieważ jego wysoka wartość ujawnia jeden z dwóch podstawowych problemów:
+Podsumowując:
+
+- całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi średnio około 5 KB (w zależności od ilości certyfikatów), co spowoduje również przejście większej liczby ramek Ethernet przez przewód
+- całkowity koszt wznowienia istniejącej sesji TLS wynosi średnio około 330 bajtów, ponieważ pozwala uniknąć części uzgadniania związanej z wymianą klucza publicznego, a także weryfikacji certyfikatu
+- całkowity narzut zaszyfrowanych danych wynosi około 40 bajtów
+
+Pamiętaj, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC, np. [Overview and Analysis of Overhead Caused by TLS](https://tools.ietf.org/id/draft-mattsson-uta-tls-overhead-01.html). Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
+
+Powinniśmy zadać sobie teraz pytanie, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/) (pozwoliłem sobie zresztą zaczerpnąć część poniższej części z tego świetnego wyjaśnienia).
+
+Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajtu odebranych przez niego danych natomiast drugi odnosi się do czasu uzgadniania TLS. Jeżeli chodzi o TTFB, to wolny czas do pierwszego bajtu jest rozpoznawany po długim czasie oczekiwania na dane. Parametr ten powinien być jak najniższy, ponieważ jego wysoka wartość ujawnia jeden z dwóch podstawowych problemów:
 
 - złe warunki sieciowe między klientem a serwerem
 - wolno odpowiadająca aplikacja serwera
