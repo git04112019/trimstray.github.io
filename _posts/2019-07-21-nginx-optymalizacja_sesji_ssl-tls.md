@@ -11,7 +11,9 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS (wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
+W tym wpisie chciałbym pomówić o optymalizacji parametrów sesji SSL/TLS (na przykładzie serwera NGINX), ponieważ jest to kluczowy krok do poprawy ogólnych wrażeń użytkowników podczas korzystania ze strony. Pamiętaj jednak, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów jest zdecydowanie czymś przesadzonym. Oczywiście optymalizacja protokołu TLS jest ważna i powinniśmy chociaż wiedzieć, który parametr, za co odpowiada i jakie niesie konsekwencje jego zmiana. Moim zdaniem i tak najważniejszą rzeczą jest dostarczanie treści, zapewniając minimalną ilości danych, które będzie musiał pobrać klient.
+
+Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich wartości parametrów sesji, a strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice — wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
 <p align="center">
   <img src="/assets/img/posts/tls_img_01.png">
@@ -24,8 +26,6 @@ Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu
 Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Zaimplementowanie tego mechanizmu umożliwia wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Możesz zadać słuszne pytanie: w jaki sposób w takim razie skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), skoro musimy zapewnić, że użyty materiał kryptograficzny związany z TLS nie będzie w żaden sposób przechowywany?
 
 W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni. Moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank).
-
-Kończąc ten wstęp, pamiętaj, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów jest zdecydowanie czymś przesadzonym. Oczywiście optymalizacja protokołu TLS jest ważna i powinniśmy chociaż wiedzieć, który parametr, za co odpowiada i jakie niesie konsekwencje jego zmiana. Moim zdaniem i tak najważniejszą rzeczą jest dostarczanie witryny, zapewniając minimalną ilości danych, które będzie musiał pobrać klient.
 
 ## Narzut TLS i pierwszy bajt danych
 
