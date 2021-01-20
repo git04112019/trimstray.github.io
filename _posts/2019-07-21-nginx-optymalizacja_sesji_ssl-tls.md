@@ -49,7 +49,7 @@ Omówmy teraz najbardziej istotne części w kontekście ich rozmiarów:
 
 - <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
 
-Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Wygląda to tak:
+Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record, określający zasady podziału SSL/TLS, dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty), określający wspólne parametry kryptograficzne dla obu stron komunikacji. Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Wygląda to tak:
 
 ```
 170 bajtów       = ClientHello
@@ -124,7 +124,11 @@ Myślę, że należy też mieć na uwadze wersję protokołu HTTP. Pamiętajmy, 
 
 Pojawia się tutaj jeszcze jeden ciekawy problem, tj. pierwszych 14 KB danych, które odbiera przeglądarka. Autorem wyjaśnienia jest [Barry Pollard](https://twitter.com/tunetheweb/), autor świetnej książki [HTTP/2 in Action](https://www.manning.com/books/http2-in-action) dlatego pozwolę sobie przetłumaczyć najistotniejsze fragmenty. Dokładne przedstawienie znajduje się w artykule [Critical Resources and the First 14 KB - A Review](https://www.tunetheweb.com/blog/critical-resources-and-the-first-14kb/). Mimo tego, że nie jest on ściśle związanych z protokołem TLS to warto się z nim zapoznać. Pamiętajmy jednak, że TLS wymaga, aby klienci odpowiadali podczas uzgadniania, co oznacza, że mogą również potwierdzać niektóre z wcześniej wysłanych pakietów TCP w tym samym czasie, zwiększając rozmiar okna przeciążenia, zwiększając opisany przez autora limit 10 pakietów. Widzisz, że pole do optymalizacji jest tak naprawdę na każdej warstwie i dla każdego protokołu.
 
-Te, jak i pozostałe najbardziej znane wskazówki, które za chwilę omówię, pozwolą poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB, zmniejszonego opóźnienia oraz przepustowości.
+Te, jak i pozostałe najbardziej znane wskazówki, które za chwilę omówię, mogą delikatnie poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB i TTTFB, zmniejszonego opóźnienia oraz przepustowości. Kluczowa wydaje się tutaj optymalizacja opóźnień, ponieważ idąc za [7 Tips for Faster HTTP/2 Performance](https://www.nginx.com/blog/7-tips-for-faster-http2-performance/), w przypadku stron internetowych o mieszanej treści wymienianych przez połączenia z typowymi opóźnieniami w Internecie, protokół HTTP/2 działa lepiej niż HTTP/1.x i HTTPS. Poniżej znajdują się wyniki podzielone na trzy grupy w zależności od typowego czasu połączenia w obie strony (RTT):
+
+- bardzo niskie RTT (0 - 20 ms) - praktycznie nie ma różnicy między opisywanymi protokołami
+- typowe RTT (30 - 250 ms) występujące przy połączeniach internetowych - protokół HTTP/2 jest szybszy niż HTTP/1.x i oba są szybsze niż HTTPS
+- wysokie RTT (300 ms i więcej) - HTTP/1.x jest szybsze niż HTTP/2, które jest szybsze niż HTTPS
 
 ## Rozmiar i typ pamięci podręcznej
 
