@@ -21,7 +21,7 @@ Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowi
 
 Faktem natomiast jest, że domyślna konfiguracja sesji SSL/TLS w NGINX nie jest optymalna. Na przykład wbudowana pamięć podręczna może być używana tylko przez jeden proces roboczy, co może powodować fragmentację pamięci, dlatego o wiele lepiej jest używać jej współdzielonej wersji. Optymalizacji powinny podlegać także dodatkowe parametry tj. odpowiedzialne za rozmiar rekordów TLS czy czas utrzymywania sesji w pamięci podręcznej.
 
-Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu zmniejszenia kosztów obliczeń i podróży komunikatów w obie strony. Projektanci protokołu TLS byli świadomi, że wykonanie pełnej negocjacji jest dość kosztowne i wymaga dwóch obiegów sieci (cztery komunikaty), a także kosztownych operacji kryptograficznych. Z tego powodu główny sekret może być przechowywany przez obie strony w pamięci podręcznej, dzięki temu, gdy klient łączy się ponownie, wystarczy, że przedstawi tzw. identyfikator sesji. Mechanizm ten, polega na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni pozwala uniknąć pełnego uzgadniania dla większości żądań, eliminując opóźnienia i znacznie zmniejszając koszty obliczeniowe dla obu stron.
+Drugim przykładem może być stosowanie mechanizmu wznawiania sesji TLS, w celu zmniejszenia kosztów obliczeń i podróży komunikatów w obie strony. Projektanci protokołu TLS byli świadomi, że wykonanie pełnej negocjacji jest dość kosztowne i wymaga dwóch obiegów sieci (cztery komunikaty), a także kosztownych operacji kryptograficznych. Mechanizm ten polega na przechowywaniu oraz udostępnianiu tych samych wynegocjowanych parametrów między wieloma połączeniami. Wznowienie sesji jest ważnym elementem optymalizacyjnym, ponieważ skrócony uścisk dłoni pozwala uniknąć pełnego uzgadniania dla większości żądań, eliminując opóźnienia i znacznie zmniejszając koszty obliczeniowe dla obu stron.
 
 Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeństwem. Zaimplementowanie tego mechanizmu umożliwia wykorzystanie techniki zwanej atakiem przedłużającym (ang. _Prolongation Attack_), który w dużym skrócie, polega na śledzeniu użytkowników na podstawie mechanizmu (danych) wznawiania sesji TLS (spójrz na pracę [Tracking Users across the Web via TLS Session Resumption]({{ site.url }}/assets/pdfs/2018-12-06-Sy-ACSAC-Tracking_Users_across_the_Web_via_TLS_Session_Resumption.pdf) <sup>[PDF]</sup>). Od razu też pojawia się pytanie, w jaki sposób skorzystać z funkcji PFS (ang. _Perfect Forward Secrecy_), dla której musimy zapewnić, że użyty materiał kryptograficzny związany z TLS nie będzie w żaden sposób przechowywany? W rzeczywistości, typowe serwery internetowe zamykają połączenia po kilkunastu sekundach bezczynności, ale będą pamiętać sesje (zestaw szyfrów i klucze) znacznie dłużej — prawdopodobnie przez godziny lub nawet dni.
 
@@ -29,7 +29,9 @@ Podsumowując wstęp, moim zdaniem należy zrównoważyć wydajność (nie chcem
 
 ## Narzut TLS i pierwszy bajt danych
 
-Przy przejściu na protokół HTTPS pojawia się pewne opóźnienie. Dzieje się tak, ponieważ początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Uzgadnianie TLS ma wiele odmian i zależy pamiętać, że dokładny narzut TLS zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości, a także różne wzorce ruchu. W przypadku typowego połączenia cały proces uzgadniania wygląda jak poniżej:
+W przypadku wdrożenia protokołu HTTPS musimy liczyć się z pojawiającym się opóźnieniem. Dzieje się tak, ponieważ początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut TLS zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości, a także różne wzorce ruchu.
+
+Przypomnijmy sobie, jak wygląda cały proces uzgadniania dla typowego połączenia SSL/TLS:
 
 <p align="center">
   <img src="/assets/img/posts/tls_handshake_rfc.png">
@@ -37,19 +39,23 @@ Przy przejściu na protokół HTTPS pojawia się pewne opóźnienie. Dzieje się
 
 Omówmy teraz najbardziej istotne części w kontekście ich rozmiarów:
 
-- <span class="h-a">ClientHello</span> - średni rozmiar początkowej wiadomości klienta to około 160 do 170 bajtów. Będzie się różnić w zależności od liczby zestawów szyfrów wysłanych przez klienta, a także liczby obecnych rozszerzeń. Jeśli używane jest wznawianie sesji, należy dodać kolejne 32 bajty w polu identyfikator sesji
+- <span class="h-a">ClientHello</span> - średni rozmiar początkowej wiadomości klienta to około 160 do 170 bajtów. Będzie się różnić w zależności od liczby zestawów szyfrów wysłanych przez klienta, a także liczby obecnych rozszerzeń. Jeśli używane jest wznawianie sesji, należy dodać kolejne 32 bajty w polu identyfikatora sesji
 
-- <span class="h-a">ServerHello</span> - ta wiadomość jest nieco bardziej statyczna niż poprzednia, jednak nadal ma zmienny rozmiar ze względu na dostępne rozszerzenia protokołu TLS. Średni rozmiar to 70 do 75 bajtów
+- <span class="h-a">ServerHello</span> - jest bardzo podobny do powyższego komunikatu, z tą różnicą, że zawiera tylko jedną metodę <span class="h-b">CipherSuite</span> i jedną metodę kompresji. Ta wiadomość jest nieco bardziej statyczna niż poprzednia, jednak nadal ma zmienny rozmiar ze względu na dostępne rozszerzenia protokołu TLS. Średni rozmiar to 70 do 75 bajtów
 
-- <span class="h-a">Certificate</span> - ta wiadomość jest najbardziej zróżnicowana pod względem rozmiaru. Wiadomość zawiera certyfikat serwera, a także wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów (bez certyfikatu głównego). Ponieważ rozmiary certyfikatów różnią się znacznie w zależności od użytych parametrów i kluczy, możemy przyjąć średnio 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą znacznie mniejszy rozmiar). Innym zmiennym czynnikiem jest długość łańcucha certyfikatów, stąd w przypadku trzech certyfikatów w łańcuchu daje to około 4.5 KB dla tej wiadomości
+- <span class="h-a">Certificate</span> - ta wiadomość jest najbardziej zróżnicowana pod względem rozmiaru. Wiadomość zawiera certyfikat serwera, a także wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów (bez certyfikatu głównego). Ponieważ rozmiary certyfikatów różnią się znacznie w zależności od użytych parametrów i kluczy, możemy przyjąć średnio 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mają zazwyczaj znacznie mniejszy rozmiar). Innym zmiennym czynnikiem jest długość łańcucha certyfikatów, stąd w przypadku trzech certyfikatów w łańcuchu daje to około 4.5 KB dla tej wiadomości
 
 - <span class="h-a">ClientKeyExchange</span> - przyjmijmy ponownie najczęściej używany przypadek, tj. certyfikat serwera RSA, który odpowiada rozmiarowi 130 bajtów tej wiadomości
 
 - <span class="h-a">ChangeCipherSpec</span> - stały rozmiar o wielkości 1 bajta (technicznie nie jest to komunikat uzgadniania)
 
+- <span class="h-a">ClientFinishedMessage</span> - ten komunikat sygnalizuje, że negocjacja TLS została zakończona, zawiera skrót wszystkich poprzednich komunikatów uzgadniania łącznie, po którym następuje specjalny numer identyfikujący rolę serwera/klienta, klucz główny i wypełnienie. Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów
+
 - <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
 
-Oczywiście w zależności od tego, jaka wersja protokołu jest używana, rozmiar może się nieco różnić — dla TLSv1.2 będzie to 12 bajtów. Co istotne, wymieniane wiadomości mają nagłówek TLS Record, określający zasady podziału SSL/TLS, dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty), określający wspólne parametry kryptograficzne dla obu stron komunikacji. Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów. Wygląda to tak:
+Co istotne, wymieniane wiadomości mają nagłówek TLS Record, określający zasady podziału SSL/TLS, dla każdego wysłanego rekordu (5 bajtów), a także nagłówek TLS Handshake (4 bajty), określający wspólne parametry kryptograficzne dla obu stron komunikacji. Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów.
+
+Wygląda to tak:
 
 ```
 170 bajtów       = ClientHello
@@ -74,7 +80,7 @@ Podsumowując:
 - całkowity koszt wznowienia istniejącej sesji TLS wynosi średnio około 330 bajtów, ponieważ pozwala uniknąć części uzgadniania związanej z wymianą klucza publicznego, a także weryfikacji certyfikatu
 - całkowity narzut zaszyfrowanych danych wynosi około 40 bajtów
 
-Dodatkowo pamiętaj o tym (koniecznie zapoznaj się z dokumentem []()):
+Dodatkowo pamiętaj o tym (koniecznie zapoznaj się z dokumentem [Performance Analysis of TLS Web Servers]({{ site.url }}/assets/pdf/tls-tocs.pdf)):
 
 - zwiększając wydajność procesora, ogólne obciążenie TLS będzie się zmniejszać
 - największy koszt wydajności serwera TLS związany jest z kryptografią klucza publicznego
