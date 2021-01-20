@@ -11,7 +11,7 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że protokoły TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS, tj. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
+Tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą odpowiednich wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytanie, **jakich wartości należy użyć, w przypadku n klientów lub danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice w przypadku sesji SSL/TLS (wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego). Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
 <p align="center">
   <img src="/assets/img/posts/tls_img_01.png">
