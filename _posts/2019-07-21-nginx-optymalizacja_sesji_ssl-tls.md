@@ -27,7 +27,7 @@ Niestety wiążą się z tym pewne problemy, zwłaszcza związane z bezpieczeńs
 
 Podsumowując, moim zdaniem należy zrównoważyć wydajność (nie chcemy, aby użytkownicy używali pełnego uzgadniania przy każdym połączeniu) i bezpieczeństwo (nie chcemy zbytnio narażać komunikacji TLS na szwank). Prawdą jest też, że i tak najważniejszą rzeczą poprawiającą wydajność jest dostarczanie treści, zapewniając minimalną ilości danych, które będzie musiał pobrać klient lub wykorzystanie usługi CDN, która może uprościć wszelkie optymalizacje (zerknij do artykułu [How does a CDN improve load times?](https://www.cloudflare.com/learning/cdn/performance/)). Wniosek z tego taki, że optymalizacja protokołu SSL/TLS nie powinna być jedyną i kluczową częścią poprawy wydajności aplikacji webowej. Pamiętaj też, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów opisanych w tym wpisie, jest zdecydowanie czymś przesadzonym, ponieważ wydajność połączenia zależy od wielu czynników.
 
-## Narzut TLS i pierwszy bajt danych
+## Narzut TLS
 
 Moim zdaniem, aplikacji nie można uznać za „wydajną”, dopóki nie będzie dobrze działać w oczach użytkownika. Wymaga to uwzględnienia kanału dostarczania, obejmującego sieć, szyfrowanie, optymalizację sieci WAN itp. — czyli wszystkich tych elementów, które znajdują się między aplikacją a użytkownikiem. Mierzenie czasu odpowiedzi kodu w punkcie wejścia serwera aplikacji nie tworzy pełnego obrazu bez uwzględnienia złożoności sieci i kanału dostarczania aplikacji. Tam, gdzie opóźnienia występują w dziesiątkach lub setkach milisekund, różne wąskie gardła występujące po drodze tylko potęgują problem.
 
@@ -99,9 +99,9 @@ Podsumowując:
 - koszty organizowania struktur danych TLS, obliczania kluczy z klucza wstępnego i wykonywania innych różnych operacji w ramach protokołu TLS pochłaniają niewielką ilość całkowitego kosztu wydajności
 - optymalizacja polegająca na wykorzystaniu mechanizmu wznawianiu sesji może nie mieć aż tak drastycznego wpływu na wydajność jak się wstępnie wydaje
 
-Przy okazji koniecznie zapoznaj się z dokumentem [Performance Analysis of TLS Web Servers]({{ site.url }}/assets/pdf/tls-tocs.pdf)).
+Przy okazji koniecznie zapoznaj się z dokumentem [Performance Analysis of TLS Web Servers]({{ site.url }}/assets/pdf/tls-tocs.pdf). Pamiętaj też, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC, np. [Overview and Analysis of Overhead Caused by TLS](https://tools.ietf.org/id/draft-mattsson-uta-tls-overhead-01.html). Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
 
-Pamiętaj, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC, np. [Overview and Analysis of Overhead Caused by TLS](https://tools.ietf.org/id/draft-mattsson-uta-tls-overhead-01.html). Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
+## Pierwszy bajt danych
 
 Powinniśmy zadać sobie teraz pytanie, co tak naprawdę chcemy uzyskać dzięki optymalizacji. Otóż główną potrzebą jest obniżenie wartości parametru TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/) (pozwoliłem sobie zresztą zaczerpnąć część poniższego fragmentu z tego świetnego wyjaśnienia).
 
@@ -120,7 +120,7 @@ Poniższy diagram pokazuje, do czego odnoszą się poszczególne czasy w porówn
 
 Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`) i pozwala określić czy wąskim gardłem jest aplikacja, czy wolna negocjacja TLS serwera i pewne opóźnienia w sieci.
 
-Przyjrzyjmy się jednak najpierw zmiennej <span class="h-b">time_starttransfer</span>, która określa czas tuż przed odczytaniem pierwszego bajtu z sieci (tak naprawdę jeszcze nie został odczytany) — czyli bez narzutu połączenia. Czas pierwszego bajtu (TTFB) możemy wyliczyć za pomocą `%{time_starttransfer} - %{time_appconnect}` i obejmuje on podróż w obie strony przez sieć. Aby obliczyć, jak długo serwer spędził na żądaniu (czyli ile czasu poświęcił na generowaniu treści), możemy wykorzystać wzór `TTFB - (%{time_connect} - %{time_namelookup})`.
+Przyjrzyjmy się jednak najpierw zmiennej `%{time_starttransfer}`, która określa czas tuż przed odczytaniem pierwszego bajtu z sieci (tak naprawdę jeszcze nie został odczytany) — czyli bez narzutu połączenia. Czas pierwszego bajtu (TTFB) możemy wyliczyć za pomocą `%{time_starttransfer} - %{time_appconnect}` i obejmuje on podróż w obie strony przez sieć. Aby obliczyć, jak długo serwer spędził na żądaniu (czyli ile czasu poświęcił na generowaniu treści), możemy wykorzystać wzór `TTFB - (%{time_connect} - %{time_namelookup})`.
 
 Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/)). Do uzyskania parametru TTFB możesz też użyć prostego narzędzia o nazwie [ttfb.sh](https://github.com/jaygooby/ttfb.sh), którego wynik działania prezentuje się jak poniżej:
 
