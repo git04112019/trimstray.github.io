@@ -19,6 +19,8 @@ W tym poście przedstawię, czym jest mechanizm **SNI** a także do czego potrze
 
 **SNI** (ang. _Server Name Indication_) jest rozszerzeniem protokołu TLS, które umożliwia klientowi (na przykład przeglądarce) na podanie dokładnej nazwy hosta, na początku procesu uzgadniania TLS, z którym klient próbuje się połączyć się (wskazuje, z którą nazwą hosta kontaktuje się przeglądarka na początku procesu uzgadniania). Po stronie serwera HTTP pozwala na wielokrotne połączenie przy użyciu tego samego adresu IP i numeru portu, bez konieczności używania wielu adresów IP, dzięki czemu możliwe jest używanie wielu certyfikatów na jednym adresie IP.
 
+Gdy przeglądarka zestawia połączenie z serwerem, nie wie on, o jaką stronę zostanie poproszony, jednak już w tym momencie musi przedstawić poprawny certyfikat dla domeny. Jak wiesz, na serwerze może znajdować się wiele domen. Gdy wiele witryn internetowych znajduje się na jednym serwerze i ma wspólny adres IP, a każda witryna ma własny certyfikat, serwer może nie wiedzieć, który z nich ma zostać zwrócony klientowi, gdy próbuje on bezpiecznie połączyć się z jedną domen. Dzieje się tak, ponieważ uzgadnianie SSL/TLS następuje, zanim klient wskaże przez HTTP, z którą witryną się łączy.
+
 Zobacz poniższy diagram z przykładem komunikacji z rozszerzeniem SNI:
 
 <p align="center">
