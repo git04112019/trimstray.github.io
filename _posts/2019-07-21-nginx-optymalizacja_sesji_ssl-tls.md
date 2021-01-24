@@ -35,13 +35,27 @@ Ponieważ HTTPS stał się de facto standardem całej komunikacji internetowej w
 
 W przypadku wdrożenia protokołu HTTPS musimy niestety mieć świadomość pojawiającego się opóźnienia. Dzieje się tak, ponieważ (jak już wiesz) początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Inżynierowie Dynatrace, podczas testów wydajnościowych w jednym ze swoich systemów, wykryli, że pełne uzgadnianie TLS trwa średnio 4x dłużej niż rzeczywista wymiana danych wykorzystująca szyfrowane połączenie! Musimy też wiedzieć, że uścisk dłoni protokołu TLS ma jeszcze większe znaczenie na długich dystansach.
 
-Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Poniżej znajduje się grafika, która opisuje gdzie ulokowany został protokół TLS w stosie TCP/IP i z jakich składa się części:
+Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Poniżej znajduje się grafika, która opisuje architekturę protokołu TLS oraz to, gdzie ulokowany został protokół w stosie TCP/IP:
 
 <p align="center">
   <img src="/assets/img/posts/tls1.png">
 </p>
 
-Przypomnijmy sobie teraz, jak wygląda proces uzgadniania dla typowego połączenia SSL/TLS. Dla uproszczenia będziemy posiłkowali się poniższym diagramem:
+Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP (został również dostosowany do UDP). Protokół SSL/TLS jest podzielony na dwie podwarstwy:
+
+- <span class="h-a">TCP Record</span> - jest to dolna warstwa protokołu, która leży nad warstwą TCP i odpowiada m.in. za fragmentację wiadomości do przesłania na możliwe do zarządzania bloki, szyfrowanie i deszyfrowanie danych, kompresję i dekompresja danych wychodzących/przychodzących, zachowanie integralności danych, a także przesyłanie danych z górnej warstwy aplikacji do dolnej warstwy transportowej i odwrotnie
+
+- warstwa wyższa składająca się z kilku protokołów:
+
+  - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadamiania drugiej strony o wystąpieniu błędu
+
+  - <span class="h-a">Change Cipher Spec</span> - definiuje ponownie negocjowaną specyfikację szyfrowania (określa zmiany w strategiach szyfrowania) i klucze, które będą używane dla wszystkich wymienianych odtąd komunikatów
+
+  - <span class="h-a">Application Data</span> - zapewnia fragmentację, kompresję, szyfrowanie i przesyłanie wiadomości w bezpieczny sposób
+
+  - <span class="h-a">Handshake</span> - aby komunikować się przez bezpieczny kanał, dwie strony komunikacji muszą uzgodnić klucze kryptograficzne i algorytmy szyfrowania dla danej sesji. Cała sekwencja, która obejmuje ustawienie identyfikatora sesji, wersji protokołu TLS, negocjowanie zestawu szyfrów, uwierzytelnianie certyfikatów i wymianę kluczy kryptograficznych między stronami, nazywa się uzgadnianiem TLS
+
+Przypomnijmy sobie teraz, jak wygląda proces uzgadniania (ostatni punkt z powyższej listy) dla typowego połączenia SSL/TLS. Dla uproszczenia będziemy posiłkowali się poniższym diagramem:
 
 <p align="center">
   <img src="/assets/img/posts/tls_handshake_length.png">
