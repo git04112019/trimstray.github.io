@@ -45,7 +45,7 @@ Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstw�
 
 - <span class="h-a">TCP Record</span> - jest to dolna warstwa protokołu, która leży nad warstwą TCP i odpowiada m.in. za fragmentację wiadomości do przesłania na możliwe do zarządzania bloki, szyfrowanie i deszyfrowanie danych, kompresję i dekompresja danych wychodzących/przychodzących, zachowanie integralności danych, a także przesyłanie danych z górnej warstwy aplikacji do dolnej warstwy transportowej i odwrotnie
 
-- warstwa wyższa składająca się z kilku protokołów:
+- warstwa wyższa składa się z kilku protokołów:
 
   - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadamiania drugiej strony o wystąpieniu błędu
 
