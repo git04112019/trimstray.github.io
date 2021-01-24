@@ -33,15 +33,15 @@ Moim zdaniem, aplikacji nie można uznać za „wydajną”, dopóki nie będzie
 
 Ponieważ HTTPS stał się de facto standardem całej komunikacji internetowej w ciągu ostatnich kilku lat, ten dodatkowy koszt zapewnienia bezpieczeństwa sieci jest niezbędnym, ale problematycznym elementem. Uzgadnianie TLS wymaga dwóch przejść w obie strony, powodując wzrost nawet o 300 ms na każdą nową sesję HTTPS. W połączeniu z rozwiązywaniem nazw i czasem połączenia TCP może minąć znacznie ponad 500 ms, zanim będzie możliwe przesłanie pierwszego bajta danych. Według badania przeprowadzonego przez inżynierów firmy Microsoft, przedstawionego w dokumencie [Seven Rules of Thumb for Web Site Experimenters]({{ site.url }}/assets/pdfs/2014experimentersRulesOfThumb.pdf), dodatkowe 250 ms opóźnienia spowodowało spadek przychodów wyszukiwarki bing o półtora procenta.
 
-Przypomnijmy sobie gdzie znajduje się protokół TLS w stosie TCP/IP i z jakich składa się części:
+W przypadku wdrożenia protokołu HTTPS musimy niestety mieć świadomość pojawiającego się opóźnienia. Dzieje się tak, ponieważ (jak już wiesz) początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Inżynierowie Dynatrace, podczas testów wydajnościowych w jednym ze swoich systemów, wykryli, że pełne uzgadnianie TLS trwa średnio 4x dłużej niż rzeczywista wymiana danych wykorzystująca szyfrowane połączenie! Musimy też wiedzieć, że uścisk dłoni protokołu TLS ma jeszcze większe znaczenie na długich dystansach.
+
+Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Poniżej znajduje się grafika, która opisuje gdzie ulokowany został protokół TLS w stosie TCP/IP i z jakich składa się części:
 
 <p align="center">
   <img src="/assets/img/posts/tls1.png">
 </p>
 
-W przypadku wdrożenia protokołu HTTPS musimy niestety mieć świadomość pojawiającego się opóźnienia. Dzieje się tak, ponieważ (jak już wiesz) początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów w obie strony przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Inżynierowie Dynatrace, podczas testów wydajnościowych w jednym ze swoich systemów, wykryli, że pełne uzgadnianie TLS trwa średnio 4x dłużej niż rzeczywista wymiana danych wykorzystująca szyfrowane połączenie! Musimy też wiedzieć, że uścisk dłoni protokołu TLS ma jeszcze większe znaczenie na długich dystansach.
-
-Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Przypomnijmy sobie teraz, jak wygląda proces uzgadniania dla typowego połączenia SSL/TLS. Dla uproszczenia będziemy posiłkowali się poniższym diagramem:
+Przypomnijmy sobie teraz, jak wygląda proces uzgadniania dla typowego połączenia SSL/TLS. Dla uproszczenia będziemy posiłkowali się poniższym diagramem:
 
 <p align="center">
   <img src="/assets/img/posts/tls_handshake_length.png">
