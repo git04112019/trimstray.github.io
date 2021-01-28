@@ -13,7 +13,7 @@ last_modified_at: 2021-01-18 00:00:00 +0000
 
 W tym wpisie chciałbym pomówić o optymalizacji parametrów sesji SSL/TLS na przykładzie serwera NGINX. Według mnie jest to jeden z istotniejszych kroków do poprawy ogólnych wrażeń użytkowników podczas korzystania z aplikacji uruchamianych w przeglądarkach internetowych, nieodłącznie wpływając na szybkość ich reakcji. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić pewne opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
 
-Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich czy optymalnych wartości parametrów sesji SSL/TLS. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytania, **jakich wartości należy użyć, w przypadku n klientów** lub **jakie wartości są odpowiednie dla danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice, np. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
+Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich czy optymalnych wartości parametrów sesji. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytania, **jakich wartości należy użyć, w przypadku n klientów** lub **jakie wartości są odpowiednie dla danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice, np. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
 <p align="center">
   <img src="/assets/img/posts/tls_img_01.png">
@@ -43,15 +43,15 @@ Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego 
 
 Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP (został również dostosowany do UDP). Protokół SSL/TLS jest podzielony na dwie podwarstwy:
 
-- <span class="h-a">TCP Record</span> - jest to dolna warstwa protokołu, która leży nad warstwą TCP i odpowiada m.in. za fragmentację wiadomości do przesłania na możliwe do zarządzania bloki, szyfrowanie i deszyfrowanie danych, kompresję i dekompresja danych wychodzących/przychodzących, zachowanie integralności danych, a także przesyłanie danych z górnej warstwy aplikacji do dolnej warstwy transportowej i odwrotnie
+- <span class="h-a">TCP Record</span> - jest to dolna warstwa protokołu, która leży zaraz nad warstwą TCP. Odpowiada ona m.in. za fragmentację wiadomości do przesłania na możliwe do zarządzania bloki, szyfrowanie, deszyfrowanie, kompresję i dekompresja danych wychodzących/przychodzących, zachowanie ich integralności, a także przesyłanie danych z górnej warstwy aplikacji do dolnej warstwy transportowej i odwrotnie
 
 - warstwa wyższa składa się z kilku protokołów:
 
-  - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadamiania drugiej strony o wystąpieniu błędu
+  - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadamiania drugiej strony o wystąpieniu błędu i wskazywania potencjalnych problemów, które mogą zagrozić bezpieczeństwu
 
   - <span class="h-a">Change Cipher Spec</span> - definiuje ponownie negocjowaną specyfikację szyfrowania (określa zmiany w strategiach szyfrowania) i klucze, które będą używane dla wszystkich wymienianych odtąd komunikatów
 
-  - <span class="h-a">Application Data</span> - zapewnia fragmentację, kompresję, szyfrowanie i przesyłanie wiadomości w bezpieczny sposób
+  - <span class="h-a">Application Data</span> - pobiera dowolne dane z warstwy aplikacji i przesyła je przez bezpieczny kanał
 
   - <span class="h-a">Handshake</span> - aby komunikować się przez bezpieczny kanał, dwie strony komunikacji muszą uzgodnić klucze kryptograficzne i algorytmy szyfrowania dla danej sesji. Cała sekwencja, która obejmuje ustawienie identyfikatora sesji, wersji protokołu TLS, negocjowanie zestawu szyfrów, uwierzytelnianie certyfikatów i wymianę kluczy kryptograficznych między stronami, nazywa się uzgadnianiem TLS
 
