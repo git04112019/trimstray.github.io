@@ -11,7 +11,7 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-W tym wpisie chciałbym pomówić o optymalizacji sesji SSL/TLS na przykładzie serwera NGINX. Według mnie jest to jeden z istotniejszych kroków do poprawy ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych, nieodłącznie wpływając na szybkość ich reakcji. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić pewne opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
+W tym wpisie chciałbym pomówić o optymalizacji sesji SSL/TLS na przykładzie serwera NGINX (dostępne z jego poziomu). Według mnie jest to jeden z istotniejszych kroków do poprawy ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych, nieodłącznie wpływając na szybkość ich reakcji. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić pewne opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
 
 Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich czy optymalnych wartości parametrów sesji. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytania, **jakich wartości należy użyć, w przypadku n klientów** lub **jakie wartości są odpowiednie dla danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice, np. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
