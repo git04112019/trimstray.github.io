@@ -41,7 +41,13 @@ Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego 
   <img src="/assets/img/posts/tls1.png">
 </p>
 
-Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP (został również dostosowany do UDP). Protokół SSL/TLS jest podzielony na dwie podwarstwy:
+Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP, a także dostosowany do protokołu UDP (zerknij do [RFC 6347 - Datagram Transport Layer Security Version 1.2](https://tools.ietf.org/html/rfc6347) opisujący protokół DTLS, który to oparty jest na protokole TLS i jest w stanie zapewnić podobne gwarancje bezpieczeństwa do TCP przy jednoczesnym zachowaniu modelu dostarczania datagramów).
+
+Korzystając z sieci opartych na protokole IP, mamy tak naprawdę jedynie dwa wyżej wymienione protokoły warstwy transportu. Protokół TLS wymaga jednak niezawodnego protokołu warstwy transportowej, ponieważ jednym z kluczowych czynników jego poprawnej pracy jest, aby wszystkie pakiety danych były odbierane w odpowiedniej kolejności i w stanie nieuszkodzonym. Na przykład protokół TLS nie miałby możliwości odzyskania danych z pakietu w celu przedstawienia ich warstwie aplikacji w przypadku ich utraty lub uszkodzenia. Idąc dalej, gdyby pakiet został uszkodzony, prawdopodobnie zostałby całkowicie zniekształcony z powodu szyfrowania, szczególnie jeśli używane są szyfry blokowe. Zatem każdy błąd pakietu w sieci wymagałby przerwania połączenia TLS i ponownej negocjacji, aby zapewnić jego odpowiednią pracę.
+
+  > Dopóki bazowy protokół transportowy zapewnia gwarancję niezawodności, dopóty sam TLS będzie działał dobrze. W samym protokole TLS nie zaimplementowano nic, co wymagałoby, aby podstawowym protokołem transportowym był TCP. Oczywiście TCP na ogół dokłada wszelkich starań, aby zapewnić niezawodność w przypadku sieci opartych na protokołach TCP/IP, stąd dobrze nadaje się do pracy w połączeniu z protokołem TLS.
+
+Przejdźmy teraz do elementów, z jakich składa się protokół SSL/TLS. Jest podzielony na dwie podwarstwy:
 
 - <span class="h-a">TCP Record</span> - jest to dolna warstwa protokołu, która leży zaraz nad warstwą TCP. Odpowiada ona m.in. za fragmentację wiadomości do przesłania na możliwe do zarządzania bloki, szyfrowanie, deszyfrowanie, kompresję i dekompresja danych wychodzących/przychodzących, zachowanie ich integralności, a także przesyłanie danych z górnej warstwy aplikacji do dolnej warstwy transportowej i odwrotnie
 
