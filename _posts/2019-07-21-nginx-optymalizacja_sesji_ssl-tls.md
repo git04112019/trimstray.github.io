@@ -138,15 +138,15 @@ Standardowy parametr TTFB możemy traktować jako czas od wysłania przez klient
 
 Zgodnie z [Understanding Resource Timing - Slow Time to First Byte](https://developers.google.com/web/tools/chrome-devtools/network/understanding-resource-timing#slow_time_to_first_byte), aby rozwiązać problem wysokiego TTFB, najpierw powinniśmy zredukować połączenia sieciowe między klientem a serwerem (a przyczyn może być wiele, np. niezoptymalizowane reguły firewall'a czy problemy z tabelami routingu). W tym wypadku najlepiej jest uruchomić aplikację lokalnie i sprawdzić, czy nadal istnieje duży TTFB. Jeśli tak, aplikacja musi zostać zoptymalizowana. Może to oznaczać optymalizację zapytań do bazy danych, implementację pamięci podręcznej dla określonych części treści lub modyfikację konfiguracji serwera HTTP. Natomiast jeśli TTFB lokalnie jest niskie, problem najprawdopodobniej stanowią sieci między klientem a serwerem. Pamiętajmy jednak, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi.
 
-Poniższy diagram pokazuje, do czego odnoszą się poszczególne czasy w porównaniu z typowym połączeniem HTTP przez TLSv1.2 (konfiguracja TLSv1.3 wymaga jednej podróży w obie strony mniej) oraz jest odzwierciedleniem, w jaki sposób biblioteka curl odnosi się do różnych etapów transferu danych dla typowego połączenia:
+Poniższy diagram pokazuje, do czego odnoszą się poszczególne czasy w porównaniu z typowym połączeniem HTTP przez TLSv1.2 (konfiguracja TLSv1.3 wymaga jednej podróży w obie strony mniej) oraz jest odzwierciedleniem, w jaki sposób biblioteka [curl](https://curl.se/docs/manpage.html) odnosi się do różnych etapów transferu danych dla typowego połączenia:
 
 <p align="center">
   <img src="/assets/img/posts/ttfb_curl.png">
 </p>
 
-Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`) i pozwala określić czy wąskim gardłem jest aplikacja, czy wolna negocjacja TLS serwera i pewne opóźnienia w sieci.
+Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`) i pozwala określić czy wąskim gardłem jest aplikacja, wolna negocjacja TLS czy inne opóźnienia podczas zestawiania połączenia z serwerem HTTP.
 
-Przyjrzyjmy się jednak najpierw zmiennej `%{time_starttransfer}`, która określa czas tuż przed odczytaniem pierwszego bajtu z sieci (tak naprawdę jeszcze nie został odczytany) — czyli bez narzutu połączenia. Czas pierwszego bajtu (TTFB) możemy wyliczyć za pomocą `%{time_starttransfer} - %{time_appconnect}` i obejmuje on podróż w obie strony przez sieć. Aby obliczyć, jak długo serwer spędził na żądaniu (czyli ile czasu poświęcił na generowaniu treści), możemy wykorzystać wzór `TTFB - (%{time_connect} - %{time_namelookup})`.
+To, co nas interesuje, to zmienna `%{time_starttransfer}`, która określa czas tuż przed odczytaniem pierwszego bajta danych (który tak naprawdę nie został jeszcze odczytany). TTFB możemy wyliczyć za pomocą `%{time_starttransfer} - %{time_appconnect}` i obejmuje on podróż w obie strony przez sieć. Aby obliczyć, jak długo serwer spędził na żądaniu (czyli ile czasu poświęcił na generowaniu treści), możemy wykorzystać wzór `%{time_starttransfer} - %{time_pretransfer}`.
 
 Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/)). Do uzyskania parametru TTFB możesz też użyć prostego narzędzia o nazwie [ttfb.sh](https://github.com/jaygooby/ttfb.sh), którego wynik działania prezentuje się jak poniżej:
 
@@ -159,15 +159,60 @@ DNS lookup: 0.002334 TLS handshake: 0.637931 TTFB including connection: 0.766321
 DNS lookup: 0.002227 TLS handshake: 0.643825 TTFB including connection: 0.772996 TTFB: .129171 Total time: 0.773133
 ```
 
-Natomiast co w przypadku protokołów SSL/TLS? Tutaj optymalizacji może być kilka, a najbardziej zróżnicowaną częścią w przypadku tych protokołów są certyfikaty (jak już wspomniałem kilkukrotnie), ponieważ oprócz ich rozmiaru, pamiętajmy o ich liczbie (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Z racji tego, że rozmiary certyfikatów różnią się w zależności od użytych parametrów i kluczy, przyjąłbym wcześniejszą wartość 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar).
+Oraz narzędzia [htrace.sh](https://github.com/trimstray/htrace.sh) włączając opcję `CURL_TIMERS` w pliku konfiguracyjnym:
 
-Zgodnie z tym co przed chwilą napisałem, możesz pomyśleć o rozmiarze certyfikatu i klucza jako głównej optymalizacji. Jednak w przypadku protokołu HTTPS należy dodać dwa kolejne RTT, aby negocjować wszystkie wymagane parametry. Pamiętaj, że pełne uzgadnianie protokołu TLSv1.2 wymaga do ukończenia dwóch podróży w obie strony, a w połączeniu z negocjacjami TCP SYN i SYN-ACK rozciąga się do trzech pełnych połączeń w obie strony. Chociaż protokół TLSv1.3 redukuje to do dwóch obiegów w przypadku TCP, nadal powoduje znaczne opóźnienie, co sprawia, że protokół jest nieodpowiedni dla niektórych aplikacji. W przypadku ograniczenia konfiguracji jedynie do protokołu TLSv1.2 (czyli najczęściej wykorzystywanej wersji) i sesji, które nie zostały wznowione, można jeszcze bardziej zmniejszyć liczbę rund do jednej, korzystając z rozszerzenia TLS False Start (patrz: [Transport Layer Security (TLS) - Enable TLS False Start](https://hpbn.co/transport-layer-security-tls/#enable-tls-false-start)).
+```
+htrace.sh -u https://badssl.com
+
+     htrace.sh v1.1.7  (openssl 1.1.1g : ok)
+
+
+    URI: https://badssl.com
+
+         » request-method: GET
+         » user-agent:     Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0
+
+    req  full_time    time_total      local_socket           via              remote_socket         geo   proto   ver   code     next_hop
+    ---  ---------    ----------      ------------           ---              -------------         ---   -----   ---   ----     --------
+ •   1   0.917818     0.917818        xxx.xxx.xxx.xxx:45838  xxx.xxx.xxx.xxx  104.154.89.105:443    US    https   1.1   200
+
+         Request Size             176 bytes
+         Response Size            2741 bytes
+         Headers Size             284 bytes
+         —————————————————————————————————
+         [0.000000]
+            DNS Lookup            0.079356
+         [0.079356]
+            TCP Handshake         0.185383
+         [0.264739]
+            TLS Handshake         0.390158
+         [0.654897]
+            Pre-Transfer          0.655018
+              Server Processing   0.262098
+         [0.917116]
+            Start-Transfer (TTFB) 0.917116
+            Data Transfer         0.000702
+         —————————————————————————————————
+            Time Total            0.917818
+```
+
+Wróćmy jednak to sedna problemu. Jakich optymalizacji powinniśmy dokonać w przypadku protokołów SSL/TLS aby poprawić parametr TTFB? Tutaj rozwiązań może być kilka. Pamiętaj, że najbardziej zróżnicowaną częścią w przypadku tych protokołów są certyfikaty (co może być główną optymalizacją), ponieważ oprócz ich rozmiaru, znaczenie ma również ich ilość w łańcuchu (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Z racji tego, że rozmiary certyfikatów różnią się w zależności od użytych parametrów i kluczy, przyjąłbym wcześniejszą wartość 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar) co jak widzisz jest dosyć pokaźnym rozmiarem biorąc pod uwagę całkowity rozmiar ładunku TLS.
+
+Jednak w przypadku protokołu HTTPS (co także już wiemy) należy dodać dwa kolejne RTT, aby negocjować wszystkie wymagane parametry. Pamiętaj, że pełne uzgadnianie protokołu TLSv1.2 wymaga do ukończenia dwóch podróży w obie strony, a w połączeniu z negocjacjami TCP SYN i SYN-ACK rozciąga się do trzech pełnych połączeń w obie strony. Chociaż protokół TLSv1.3 redukuje to do dwóch obiegów w przypadku TCP, nadal powoduje znaczne opóźnienie, co sprawia, że protokół jest nieodpowiedni dla niektórych aplikacji. W przypadku ograniczenia konfiguracji jedynie do protokołu TLSv1.2 (czyli najczęściej wykorzystywanej wersji) i sesji, które nie zostały wznowione, można jeszcze bardziej zmniejszyć liczbę rund do jednej, korzystając z rozszerzenia TLS False Start (patrz: [Transport Layer Security (TLS) - Enable TLS False Start](https://hpbn.co/transport-layer-security-tls/#enable-tls-false-start)).
 
   > Ciekawostka: Serwer NGINX w wersji <1.5.6 miał pewien feler, otóż zastosowanie certyfikatów o rozmiarze przekraczającym 4 KB wiązało się z dodatkową podróżą w obie strony, zamieniając uzgadnianie w obie strony w trzy transakcje (patrz: [NGINX Changelog](http://nginx.org/en/CHANGES) — _Feature: optimization of SSL handshakes when using long certificate chains_). Co gorsza, w niektórych specyficznych przypadkach dochodziło do przekroczenia krawędzi w stosie TCP, co powodowało, że klient potwierdzał kilka pierwszych pakietów z serwera, a następnie czekał, zanim wyzwolone zostanie opóźnione potwierdzenie ACK dla ostatniego segmentu.
 
-Kolejną kwestią, o której nie możemy zapomnieć, jest wersja protokołu HTTP. Pamiętajmy, że HTTP/2 używa jednego połączenia do serwera, zamiast jednego połączenia na żądanie zasobu oraz wymaga tylko jednego kosztownego uzgadniania TLS. Co więcej, dzięki multipleksowaniu maksymalizujemy wykorzystanie pojedynczego połączenie — oznacza to znacznie mniejszą potrzebę czasochłonnej konfiguracji połączenia, co jest szczególnie korzystne w przypadku TLS, ponieważ tworzenie połączeń TLS jest szczególnie wymagające czasowo.
+Kolejne optymalizacje mogą dotyczyć buforowania sesji, zastosowaniu mechanizmu wznawiania czy optymalizacji pamięci podręcznej po stronie serwera — tymi zagadnieniami zajmiemy się w dalszej części tego artykułu.
 
-Pojawia się tutaj jeszcze jeden ciekawy problem, tj. pierwsze 14 KB danych, które odbiera przeglądarka. Autorem wyjaśnienia jest [Barry Pollard](https://twitter.com/tunetheweb/), autor świetnej książki [HTTP/2 in Action](https://www.manning.com/books/http2-in-action). Dokładne przedstawienie znajduje się w artykule [Critical Resources and the First 14 KB - A Review](https://www.tunetheweb.com/blog/critical-resources-and-the-first-14kb/) i mimo tego, że nie jest on ściśle związanych z protokołem TLS, to warto się z nim zapoznać.
+Inną kwestią, o której nie możemy zapomnieć, jest wersja protokołu HTTP. Pamiętajmy, że HTTP/2 używa jednego połączenia przy komunikacji z serwerem, zamiast jednego połączenia na żądanie zasobu oraz wymaga tylko jednego kosztownego uzgadniania TLS. Co więcej, dzięki multipleksowaniu maksymalizujemy wykorzystanie pojedynczego połączenie — oznacza to znacznie mniejszą potrzebę czasochłonnej konfiguracji połączenia, co jest szczególnie korzystne w przypadku TLS, ponieważ tworzenie połączeń TLS jest szczególnie wymagające czasowo.
+
+Kluczowa wydaje się tutaj optymalizacja opóźnień, ponieważ idąc za [7 Tips for Faster HTTP/2 Performance](https://www.nginx.com/blog/7-tips-for-faster-http2-performance/), w przypadku stron internetowych o mieszanej treści wymienianych przez połączenia z typowymi opóźnieniami w Internecie, protokół HTTP/2 działa lepiej niż HTTP/1.x i HTTPS. Poniżej znajdują się wyniki podzielone na trzy grupy w zależności od typowego czasu połączenia w obie strony (RTT):
+
+- bardzo niskie RTT (0 - 20 ms) - praktycznie nie ma różnicy między opisywanymi protokołami
+- typowe RTT (30 - 250 ms) występujące przy połączeniach internetowych - protokół HTTP/2 jest szybszy niż HTTP/1.x i oba są szybsze niż HTTPS
+- wysokie RTT (300 ms i więcej) - HTTP/1.x jest szybsze niż HTTP/2, które jest szybsze niż HTTPS
+
+W kontekście wersji protokołu pojawia się jeszcze jeden ciekawy problem, tj. pierwsze 14 KB danych, które odbiera przeglądarka. Autorem wyjaśnienia jest [Barry Pollard](https://twitter.com/tunetheweb/), autor świetnej książki [HTTP/2 in Action](https://www.manning.com/books/http2-in-action). Dokładne przedstawienie znajduje się w artykule [Critical Resources and the First 14 KB - A Review](https://www.tunetheweb.com/blog/critical-resources-and-the-first-14kb/) i mimo tego, że nie jest on ściśle związanych z protokołem TLS, to warto się z nim zapoznać.
 
   > Pamiętajmy, że TLS wymaga, aby klienci odpowiadali podczas uzgadniania, co oznacza, że mogą również potwierdzać niektóre z wcześniej wysłanych pakietów TCP w tym samym czasie, zwiększając rozmiar okna przeciążenia (oraz opisany przez autora powyższego artgykułu limit 10 pakietów). Widzisz, że pole do optymalizacji jest tak naprawdę na każdej warstwie i dla każdego protokołu.
 
@@ -177,11 +222,7 @@ Dzięki takiemu rozwiązaniu będzie on okresowo komunikował się z urzędem ce
 
 Niestety, ta kontrola nie jest wykonywana równolegle. W większości przeglądarek do czasu zakończenia sprawdzania unieważnienia przeglądarka nie rozpocznie pobierania żadnych dodatkowych treści. Innymi słowy, sprawdzenie OCSP blokuje dostarczanie treści i nieodłącznie wydłuża żądanie o znaczną ilość czasu. Widzimy, że zaimplementowanie mechanizmu OCSP Stapling eliminuje potrzebę kontaktowania się klientów z CA, zmniejszając opóźnienia. Więcej o wydajności tego rozwiązania poczytasz w artykule [The impact of SSL certificate revocation on web performance](https://nooshu.github.io/blog/2020/01/26/the-impact-of-ssl-certificate-revocation-on-web-performance/).
 
-Te, jak i pozostałe najbardziej znane wskazówki, które za chwilę omówię, mogą delikatnie poprawić wydajność serwera NGINX dla protokołu HTTPS w celu uzyskania lepszego TTFB i TTTFB, zmniejszonego opóźnienia oraz przepustowości. Kluczowa wydaje się tutaj optymalizacja opóźnień, ponieważ idąc za [7 Tips for Faster HTTP/2 Performance](https://www.nginx.com/blog/7-tips-for-faster-http2-performance/), w przypadku stron internetowych o mieszanej treści wymienianych przez połączenia z typowymi opóźnieniami w Internecie, protokół HTTP/2 działa lepiej niż HTTP/1.x i HTTPS. Poniżej znajdują się wyniki podzielone na trzy grupy w zależności od typowego czasu połączenia w obie strony (RTT):
-
-- bardzo niskie RTT (0 - 20 ms) - praktycznie nie ma różnicy między opisywanymi protokołami
-- typowe RTT (30 - 250 ms) występujące przy połączeniach internetowych - protokół HTTP/2 jest szybszy niż HTTP/1.x i oba są szybsze niż HTTPS
-- wysokie RTT (300 ms i więcej) - HTTP/1.x jest szybsze niż HTTP/2, które jest szybsze niż HTTPS
+Powyższe wskazówki mogą delikatnie poprawić wydajność połączenia w celu uzyskania lepszego TTFB i TTTFB, zmniejszając opóźnienia oraz przepustowość. W tym artykule skupię się jednak na pięciu parametrach, które można dostroić z poziomu serwera NGINX.
 
 ## Rozmiar i typ pamięci podręcznej
 
