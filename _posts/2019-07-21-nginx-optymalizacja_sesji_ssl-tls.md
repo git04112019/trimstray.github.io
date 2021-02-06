@@ -11,7 +11,7 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-W tym wpisie chciałbym pomówić o optymalizacji parametrów sesji SSL/TLS na przykładzie serwera NGINX (dostępnych z jego poziomu). Według mnie jest to jeden z istotniejszych kroków do poprawy ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych, nieodłącznie wpływając na szybkość ich reakcji. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić pewne opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
+W tym wpisie chciałbym pomówić o optymalizacji parametrów sesji SSL/TLS na przykładzie serwera NGINX. Według mnie jest to jeden z istotniejszych kroków do poprawy ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych, nieodłącznie wpływając na szybkość ich reakcji. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić pewne opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
 
 Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich czy optymalnych wartości parametrów sesji. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytania, **jakich wartości należy użyć, w przypadku n klientów** lub **jakie wartości są odpowiednie dla danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice, np. wznawianie sesji dla pierwszego z nich, bilety sesji dla drugiego. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
@@ -134,10 +134,20 @@ Przy okazji koniecznie zapoznaj się z dokumentem [Performance Analysis of TLS W
 Możesz teraz zadać pytanie, w jaki sposób zmierzyć czas zestawiania sesji SSL/TLS? Spójrz na poniższy diagram, który pokazuje, do czego odnoszą się poszczególne czasy w porównaniu z typowym połączeniem HTTP przez TLSv1.2 (konfiguracja TLSv1.3 wymaga jednej podróży w obie strony mniej) oraz jest odzwierciedleniem, w jaki sposób biblioteka [curl](https://curl.se/docs/manpage.html) odnosi się do różnych etapów transferu danych dla typowego połączenia:
 
 <p align="center">
-  <img src="/assets/img/posts/ttfb_curl.png">
+  <img src="/assets/img/posts/timings_curl.png">
 </p>
 
-Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`). Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/)). Możesz też użyć prostego narzędzia o nazwie [ttfb.sh](https://github.com/jaygooby/ttfb.sh), którego wynik działania prezentuje się jak poniżej:
+<sup><i>Źródło: [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/).</i></sup>
+
+Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`). Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudf-lare.com/a-question-of-timing/)). Poniżej znajduje się podobny diagram do powyższego, pokazujący czasy z poziomu przeglądarki internetowej:
+
+<p align="center">
+  <img src="/assets/img/posts/timings_browser.png">
+</p>
+
+<sup><i>Źródło: [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/).</i></sup>
+
+Możesz też użyć prostego narzędzia o nazwie [ttfb.sh](https://github.com/jaygooby/ttfb.sh), którego wynik działania prezentuje się jak poniżej:
 
 ```
 ./ttfb -v -n 5 https://badssl.com
@@ -163,34 +173,34 @@ htrace.sh -u https://badssl.com
 
     req  full_time    time_total      local_socket           via              remote_socket         geo   proto   ver   code     next_hop
     ---  ---------    ----------      ------------           ---              -------------         ---   -----   ---   ----     --------
- •   1   0.917818     0.917818        xxx.xxx.xxx.xxx:45838  xxx.xxx.xxx.xxx  104.154.89.105:443    US    https   1.1   200
+ •   1   0.986634     0.986634        xxx.xxx.xxx.xxx:51800  xxx.xxx.xxx.xxx  104.154.89.105:443    US    https   1.1   200
 
-         Request Size             259 bytes
-         Response Size            9414 bytes
-         Headers Size             530 bytes
-         —————————————————————————————————
-         [0.000000]
-            › DNS Request
+             Request Size         209 bytes
+             Response Size        2741 bytes
+             Headers Size         284 bytes
+         ————————————————————————————————————
+         [0ms]
+            › DNS Query
             ‹ DNS Response
-              DNS Lookup          0.003253
-         [0.003253]
+              DNS Lookup          58.77ms
+         [58.77ms]
             › TCP SYN
             › TCP ACK
-              TCP Handshake       0.009565
-         [0.012818]
+              TCP Handshake (RTT) 306.03ms
+         [364.80ms]
             › TLS ClientHello
             ‹ TLS Finished
-              TLS Handshake       0.311389
-         [0.324207]
-              TLS › HTTP          0.000093
-         [0.324300]
+              TLS Handshake       466.89ms
+         [831.70ms]
+              TLS › HTTP          0.12ms
+         [831.81ms]
             › HTTP Request
             ‹ HTTP Response
-              Waiting (TTFB)      1.542163
-         [1.866463]
-              Data Transfer       0.010338
-         —————————————————————————————————
-            Time Total            1.876801
+              Waiting (TTFB)      154.19ms
+         [986.00ms]
+              Data Transfer       0.63ms
+         ————————————————————————————————————
+              Time Total          986.63ms
 ```
 
 ## Rozmiar i typ pamięci podręcznej
