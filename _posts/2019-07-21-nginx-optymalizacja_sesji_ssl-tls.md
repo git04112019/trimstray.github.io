@@ -15,6 +15,8 @@ W tym wpisie chciałbym pomówić o optymalizacji parametrów sesji SSL/TLS na p
 
 Jeżeli chodzi o temat tego wpisu, to tak naprawdę nie ma jednoznacznych odpowiedzi, które dotyczą ustawienia odpowiednich czy optymalnych wartości parametrów sesji. Strojenie ich jest trudne, ponieważ ciężko jest uzyskać odpowiedź na pytania, **jakich wartości należy użyć, w przypadku n klientów** lub **jakie wartości są odpowiednie dla danego środowiska**. Aby jeszcze bardziej skomplikować sprawę, pamiętajmy, że obecnie najczęściej wykorzystywane protokoły, tj. TLSv1.2 i TLSv1.3 posiadają pewne różnice. Co więcej, nie ma jednego standardu i różne projekty dyktują różne ustawienia.
 
+Wspomniałem przed chwilą, że moim zdaniem, jest to jeden z istotniejszych elementów optymalizacji, jednak przed rozpoczęciem dalszej lektury nie mogę nie wspomnieć, że są inne, niezwykle ważne (jeśli nie ważniejsze) rzeczy do poprawy ogólnej wydajności web aplikacji, tj. włączenie protokołu HTTP/2, zastosowanie mechanizmów pamięci podręcznej, optymalizacja treści pod kątem szybkości ładowania czy po prostu optymalizacja kodu. W tym wpisie rozmawiać będziemy jedynie o niektórych parametrach protokołu SSL/TLS, które możemy zmodyfikować z poziomu serwera NGINX — należy mieć jednak świadomość, że nie są to oczywiście jedyne możliwości poprawy (nie tylko wydajności, ale także bezpieczeństwa) tego zestawu protokołów.
+
 <p align="center">
   <img src="/assets/img/posts/tls_img_01.png">
 </p>
