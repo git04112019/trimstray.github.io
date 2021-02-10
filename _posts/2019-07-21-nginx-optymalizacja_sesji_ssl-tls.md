@@ -72,7 +72,7 @@ Przy czym pamiętajmy, że protokół TLSv1.3 umożliwia tzw. wznowienie zeroweg
   - nowe połączenie: 3 RTT + DNS
   - wznowienie połączenie: 2 RTT + DNS
 
-Widzisz sam, że wzrost wydajności jest znaczny a wręcz ogromny.
+Widzisz sam, że po przejściu na obecnie najnowszą wersję protokołu TLS wzrost wydajności może być naprawdę znaczny.
 
 Głównym problemem związanym z wydajnością uzgadniania TLS nie jest (jak mogłoby się wydawać) to, jak długo trwa cały proces, ale kiedy ma miejsce podczas komunikacji między klientem a serwerem. Ponieważ uzgadnianie jest częścią tworzenia bezpiecznego połączenia, musi nastąpić przed wymianą jakichkolwiek danych. Wydłuża to czas, w którym przeglądarka nie może zrobić nic innego, spowalniając wydajność aplikacji internetowej. Przeglądarka czeka, dopóki nie otrzyma początkowego zasobu, tym samym nie może pobrać równolegle innych, takich jak pliki CSS lub obrazy, ponieważ nie uzyskała tej początkowej informacji, która mówi jej właśnie o innych zasobach. Dzieje się tak w przypadku każdej odwiedzanej strony internetowej: przeglądarka jest blokowana, aby uzyskać tę pierwszą odpowiedź.
 
