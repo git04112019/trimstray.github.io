@@ -49,9 +49,34 @@ Ponieważ HTTPS stał się de facto standardem całej komunikacji internetowej w
 
 W przypadku wdrożenia protokołu HTTPS musimy niestety mieć świadomość pojawiającego się opóźnienia. Dzieje się tak, ponieważ (jak już wspomniałem) początkowe uzgadnianie TLS wymaga dwóch dodatkowych obiegów przed ustanowieniem faktycznego połączenia, w porównaniu do jednego przejścia z wykorzystaniem niezaszyfrowanego protokołu HTTP. Widzimy, że ten proces, choć konieczny, może mieć wpływ na wydajność, opóźniając pobieranie krytycznych zasobów, takich jak początkowa strona HTML. Inżynierowie Dynatrace, podczas testów wydajnościowych w jednym ze swoich systemów, wykryli, że pełne uzgadnianie TLS trwa średnio 4x dłużej niż rzeczywista wymiana danych wykorzystująca szyfrowane połączenie! Musimy też wiedzieć, że uścisk dłoni protokołu TLS ma jeszcze większe znaczenie na długich dystansach.
 
+Spójrzmy na poniższą grafikę, która w prosty sposób porównuje najnowsze wersje protokołu TLS w kontekście przepustowości podczas ustanawiania połączenia:
+
+<p align="center">
+  <img src="/assets/img/posts/tls_12vs13_performance.png">
+</p>
+
+Przy czym pamiętajmy, że protokół TLSv1.3 umożliwia tzw. wznowienie zerowego czasu podróży. Więcej na ten temat poczytasz w oficjalnym drafcie [Transport parameters for 0-RTT connections](https://tools.ietf.org/id/draft-kuhn-quic-0rtt-bdp-01.html) <sup>[IETF]</sup>, a także świetnym artykule [Even faster connection establishment with QUIC 0-RTT resumption](https://blog.cloudflare.com/even-faster-connection-establishment-with-quic-0-rtt-resumption/). Podsumowując różnice:
+
+- **TLSv1.2 (i starsze)**
+
+  - nowe połączenie: 4 RTT + DNS
+  - wznowienie połączenia: 3 RTT + DNS
+
+- **TLSv1.3**
+
+  - nowe połączenie: 3 RTT + DNS
+  - wznowienie połączenia: 3 RTT + DNS
+
+- **TLSv1.3 + 0-RTT**
+
+  - nowe połączenie: 3 RTT + DNS
+  - wznowienie połączenie: 2 RTT + DNS
+
+Widzisz sam, że wzrost wydajności jest znaczny a wręcz ogromny.
+
 Głównym problemem związanym z wydajnością uzgadniania TLS nie jest (jak mogłoby się wydawać) to, jak długo trwa cały proces, ale kiedy ma miejsce podczas komunikacji między klientem a serwerem. Ponieważ uzgadnianie jest częścią tworzenia bezpiecznego połączenia, musi nastąpić przed wymianą jakichkolwiek danych. Wydłuża to czas, w którym przeglądarka nie może zrobić nic innego, spowalniając wydajność aplikacji internetowej. Przeglądarka czeka, dopóki nie otrzyma początkowego zasobu, tym samym nie może pobrać równolegle innych, takich jak pliki CSS lub obrazy, ponieważ nie uzyskała tej początkowej informacji, która mówi jej właśnie o innych zasobach. Dzieje się tak w przypadku każdej odwiedzanej strony internetowej: przeglądarka jest blokowana, aby uzyskać tę pierwszą odpowiedź.
 
-Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Samo uzgadnianie jest procesem, który przeglądarka i serwer wykonują, aby zdecydować, w jaki sposób się ze sobą komunikować tworząc bezpieczne połączenie. Niektóre z rzeczy, które mają miejsce podczas uścisku dłoni, to:
+Jak zapewne możesz się domyślać, uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Samo uzgadnianie jest procesem, który przeglądarka i serwer wykonują, aby zdecydować, w jaki sposób się ze sobą komunikować tworząc bezpieczne połączenie. Niektóre z rzeczy, które mają miejsce podczas uścisku dłoni, to:
 
 - potwierdzenie tożsamości serwera i ewentualnie klienta
 - ustalenie, jakie szyfry, podpisy i inne opcje obsługuje każda ze stron, które zostaną użyte do podczas szyfrowania połączenia
