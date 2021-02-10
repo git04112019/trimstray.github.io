@@ -57,7 +57,7 @@ Uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego 
 - ustalenie, jakie szyfry, podpisy i inne opcje obsługuje każda ze stron, które zostaną użyte do podczas szyfrowania połączenia
 - tworzenie i wymianę kluczy do późniejszego ich wykorzystania podczas szyfrowania danych
 
-Tak naprawdę, zarówno klient, jak i serwer muszą wykonać symetryczne szyfrowanie i deszyfrowanie, analizę protokołów, obliczenie klucza prywatnego, weryfikację certyfikatu i inne obliczenia, które wydłużają całe połączenie. W istocie uzgadnianie TLS polega na wzajemnej weryfikacji klienta i serwera, uzgadnianiu wspólnego zestawu szyfrów i opcji bezpieczeństwa, a następnie kontynuowaniu konwersacji przy użyciu tych opcji.
+Tak naprawdę, zarówno klient, jak i serwer muszą wykonać symetryczne szyfrowanie i deszyfrowanie, analizę protokołów, obliczenie klucza prywatnego, weryfikację certyfikatu i inne obliczenia, które wydłużają całe połączenie. W istocie uzgadnianie TLS polega na wzajemnej weryfikacji klienta i serwera, uzgadnianiu wspólnego zestawu szyfrów i opcji bezpieczeństwa, a następnie kontynuowaniu konwersacji przy użyciu tych wszystkich rzeczy.
 
 Zacznijmy jednak od poniższej grafiki, która opisuje architekturę protokołu TLS oraz to, gdzie został ulokowany w stosie TCP/IP:
 
@@ -65,9 +65,9 @@ Zacznijmy jednak od poniższej grafiki, która opisuje architekturę protokołu 
   <img src="/assets/img/posts/tls1.png">
 </p>
 
-Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP, a także dostosowany do protokołu UDP (zerknij do [RFC 6347 - Datagram Transport Layer Security Version 1.2](https://tools.ietf.org/html/rfc6347) opisujący protokół DTLS, który to oparty jest na protokole TLS i jest w stanie zapewnić podobne gwarancje bezpieczeństwa do TCP przy jednoczesnym zachowaniu modelu dostarczania datagramów).
+Widzimy, że protokół TLS znajduje się pomiędzy warstwą aplikacji a warstwą transportową i został zaprojektowany do pracy na niezawodnym protokole transportowym, takim jak TCP. Nie jest to jednak jedyny protokół tej warstwy, z którym współpracuje TLS — został on również dostosowany do protokołu UDP, a dokładniej protokołu DTLS (zerknij do [RFC 6347 - Datagram Transport Layer Security Version 1.2](https://tools.ietf.org/html/rfc6347)), który jest w stanie zapewnić podobne gwarancje bezpieczeństwa do TCP przy jednoczesnym zachowaniu modelu dostarczania datagramów.
 
-Korzystając z sieci opartych na protokole IP, mamy tak naprawdę jedynie dwa wyżej wymienione protokoły warstwy transportu. Protokół TLS wymaga jednak niezawodnego protokołu warstwy transportowej, ponieważ jednym z kluczowych czynników jego poprawnej pracy jest, aby wszystkie pakiety danych były odbierane w odpowiedniej kolejności i w stanie nieuszkodzonym. Na przykład protokół TLS nie miałby możliwości odzyskania danych z pakietu w celu przedstawienia ich warstwie aplikacji w przypadku ich utraty lub uszkodzenia. Idąc dalej, gdyby pakiet został uszkodzony, prawdopodobnie zostałby całkowicie zniekształcony z powodu szyfrowania, szczególnie jeśli używane są szyfry blokowe. Zatem każdy błąd pakietu w sieci wymagałby przerwania połączenia TLS i ponownej negocjacji, aby zapewnić jego odpowiednią pracę.
+Korzystając z sieci opartych na protokole IP, mamy tak naprawdę jedynie dwa wyżej wymienione protokoły warstwy transportu. Protokół TLS wymaga jednak niezawodnego protokołu warstwy transportowej, ponieważ jednym z kluczowych czynników jego poprawnej pracy jest, aby wszystkie pakiety danych były odbierane w odpowiedniej kolejności i w stanie nieuszkodzonym. Na przykład protokół TLS nie miałby możliwości odzyskania danych z pakietu w celu przedstawienia ich warstwie aplikacji w przypadku jakiejkolwiek utraty lub uszkodzenia. Idąc dalej, gdyby pakiet został uszkodzony, prawdopodobnie zostałby całkowicie zniekształcony z powodu szyfrowania, szczególnie w przypadku użycia szyfrów blokowych. Zatem każdy błąd pakietu w sieci wymagałby przerwania połączenia TLS i ponownej negocjacji, aby zapewnić jego odpowiednią pracę.
 
   > Dopóki bazowy protokół transportowy zapewnia gwarancję niezawodności, dopóty sam TLS będzie działał dobrze. W samym protokole TLS nie zaimplementowano nic, co wymagałoby, aby podstawowym protokołem transportowym był TCP. Oczywiście TCP na ogół dokłada wszelkich starań, aby zapewnić niezawodność w przypadku sieci opartych na protokołach TCP/IP, stąd dobrze nadaje się do pracy w połączeniu z protokołem TLS.
 
@@ -77,7 +77,7 @@ Przejdźmy teraz do elementów, z jakich składa się protokół SSL/TLS. Jest o
 
 - warstwy wyższej składającej się z kilku protokołów:
 
-  - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadamiania drugiej strony o wystąpieniu błędu i wskazywania potencjalnych problemów, które mogą zagrozić bezpieczeństwu
+  - <span class="h-a">Alert</span> - definiuje poziomy alertów wraz z ich opisem. Służy głównie do powiadomienia drugiej strony o wystąpieniu błędu i wskazania potencjalnych problemów, które mogą zagrozić bezpieczeństwu
 
   - <span class="h-a">Change Cipher Spec</span> - definiuje ponownie negocjowaną specyfikację szyfrowania (określa zmiany w strategiach szyfrowania) i klucze, które będą używane dla wszystkich wymienianych odtąd komunikatów
 
@@ -109,9 +109,11 @@ Zachęcam Cię jednak, abyś wykorzystał sniffer sieciowy i samemu zbadał cał
 
 - <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
 
-Co istotne, wymieniane wiadomości mają nagłówek TLS Record (rekord ten może być dowolnej długości do 16k), określający zasady podziału SSL/TLS. Dla każdego wysłanego rekordu musimy doliczyć nagłówek o rozmiarze 5 bajtów, a także nagłówek TLS Handshake o rozmiarze 4 bajtów, określający wspólne parametry kryptograficzne dla obu stron komunikacji (w tym miejscu warto zapoznać się z [RFC 5246](https://tools.ietf.org/html/rfc5246), gdzie opisane zostały oba typy protokołów). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów.
+Co istotne, wymieniane dane pobrane z warstwy aplikacji (tj. <span class="h-b">Application Data</span>) dostarczane przez protokół TLS są przesyłane w protokole rekordu — mają nagłówek TLS Record (o długości do 16 KB), określający zasady podziału SSL/TLS. Dla każdego wysłanego rekordu musimy doliczyć nagłówek o rozmiarze 5 bajtów, a także nagłówek TLS Handshake o rozmiarze 4 bajtów, określający wspólne parametry kryptograficzne dla obu stron komunikacji (w tym miejscu warto zapoznać się z [RFC 5246](https://tools.ietf.org/html/rfc5246), gdzie opisane zostały oba typy protokołów). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów.
 
-Podsumowując, wygląda to tak:
+Generalnie, do każdego rekordu zostanie dodane od 20 do 40 bajtów narzutu na nagłówek, adres MAC i opcjonalne wypełnienie. Jeśli rekord zmieści się w jednym pakiecie TCP, musimy również dodać narzut IP i TCP, czyli 20-bajtowy nagłówek dla IP i 20-bajtowy nagłówek dla TCP bez dodatkowych opcji. W rezultacie każdy rekord może zająć od 60 do 100 bajtów. Dla typowej maksymalnej jednostki transmisji (MTU) wielkości 1500 bajtów, ta struktura pakietu przekłada się na minimum 6% narzutu ramkowania.
+
+Podsumowując nasz przykład, wygląda to tak:
 
 ```
 150 bajtów       = ClientHello
@@ -128,7 +130,7 @@ Podsumowując, wygląda to tak:
 
 Całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku około 5 KB. Wiemy także, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Przypomnij sobie teraz mechanizm wznawiania sesji dzięki któremu, po ustanowieniu sesji TLS, można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 350 bajtów.
 
-Widzisz, że najbardziej zróżnicowaną częścią w przypadku protokołu SSL/TLS są certyfikaty (co może być główną optymalizacją), ponieważ oprócz ich rozmiaru, znaczenie ma również ich ilość (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Z racji tego, że rozmiary certyfikatów różnią się w zależności od użytych parametrów i kluczy, przyjąłbym wcześniejszą wartość 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar) co jak widzisz jest dosyć pokaźnym rozmiarem biorąc pod uwagę całkowity rozmiar ładunku TLS.
+Widzisz, że w przypadku protokołu SSL/TLS najbardziej zróżnicowaną (pod kątem rozmiaru) częścią są certyfikaty. Dlatego może to być pierwszy element do optymalizacji, ponieważ oprócz ich rozmiaru, znaczenie ma również ich ilość (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Z racji tego, że rozmiary certyfikatów różnią się w zależności od użytych parametrów i kluczy, przyjąłbym wcześniejszą wartość 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar) co jak widzisz jest dosyć pokaźnym rozmiarem biorąc pod uwagę całkowity rozmiar ładunku TLS.
 
 Jeżeli chcesz uzyskać więcej informacji na temat protokołów TLS i tego, z czego się składają, odsyłam do trzech genialnych prezentacji:
 
@@ -136,7 +138,7 @@ Jeżeli chcesz uzyskać więcej informacji na temat protokołów TLS i tego, z c
 - [The New Illustrated TLS Connection - TLSv1.3](https://tls13.ulfheim.net/)
 - [Traffic analysis of an SSL/TLS session](http://blog.fourthbit.com/2014/12/23/traffic-analysis-of-an-ssl-slash-tls-session/)
 
-Pojawia się tutaj jeszcze jedna kwestia, mianowicie całkowitego narzutu obciążenia sieci związanego z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy algorytmu MAC). Po drugie, w zależności od używanych zestawów szyfrów, narzut TLS w czasie wykonywania jest różny. Szyfry blokowe zwykle powodują większe obciążenie w porównaniu do szyfrów strumieniowych pod względem ruchu (ze względu na wypełnienie). Obciążenie środowiska, z racji wykorzystania procesora, jest również wyższe w porównaniu ze standardową transmisją, ponieważ w grę wchodzą operacje kryptograficzne (widoczne jest to zwłaszcza przy większych kluczach, tj. 4096-bit — warto tutaj pamiętać o kluczach ECDSA jako dodatkowej optymalizacji).
+Jak już wspomniałem wcześniej, pojawia się tutaj jeszcze jedna kwestia, mianowicie całkowitego narzutu obciążenia sieci związanego z zaszyfrowanymi danymi, który może wynieść około 40 bajtów (w zależności od mechanizmów integralności danych, kompresji czy algorytmu MAC). Po drugie, w zależności od używanych zestawów szyfrów, narzut TLS w czasie wykonywania jest różny. Szyfry blokowe zwykle powodują większe obciążenie w porównaniu do szyfrów strumieniowych pod względem ruchu (ze względu na wypełnienie). Obciążenie środowiska, z racji wykorzystania procesora, jest również wyższe w porównaniu ze standardową transmisją, ponieważ w grę wchodzą operacje kryptograficzne (widoczne jest to zwłaszcza przy większych kluczach, tj. 4096-bit — warto tutaj pamiętać o kluczach ECDSA jako dodatkowej optymalizacji).
 
 Podsumowując i dodając jeszcze kilka istotnych informacji:
 
