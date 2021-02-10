@@ -141,7 +141,7 @@ Jednym z rozwiązań jest użycie instrukcji `if` w połączeniu z modułami `ge
   }
   ```
 
-  > Zgodnie z dokumentacją, nie zaleca się używania instrukcji `if`, chociaż moim zdaniem, użycie takiej konstrukcji może być nieco bardziej elastyczne oraz bezpieczniejsze dzięki wykorzystaniu ww. modułów.
+  > Zgodnie z dokumentacją, nie zaleca się używania instrukcji `if` (zwłaszcza w kontekście lokalizacji), chociaż moim zdaniem, użycie takiej konstrukcji może być nieco bardziej elastyczne oraz bezpieczniejsze dzięki wykorzystaniu ww. modułów. Po drugie, sama dokumentacja wskazuje, że przypadki użycia, w których po prostu nie można uniknąć użycia tego warunku, na przykład jeśli trzeba przetestować zmienną, która nie ma równoważnej dyrektywy.
 
 Planując budowanie list kontroli dostępu, rozważ kilka opcji, z których możesz skorzystać. NGINX dostarcza moduły <span class="h-b">ngx_http_access_module</span>, <span class="h-b">ngx_http_geo_module</span>, <span class="h-b">ngx_http_map_module</span> lub <span class="h-b">ngx_http_auth_basic_module</span>, które pozwalają na nadawanie dostępów i zabezpieczanie miejsc w aplikacji.
 

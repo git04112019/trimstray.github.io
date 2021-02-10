@@ -11,7 +11,37 @@ toc: true
 new: false
 ---
 
-Podczas studiowania meandrów NGINX'a, kilkukrotnie spotkałem się ze stwierdzeniem, że wyrażeń z `if` należy unikać jak ognia. Na pewno są ku temu przesłanki, zwłaszcza że sami autorzy utworzyli poświęcony temu tematowi specjalny artykuł pod tytułem [If is Evil... when used in location context](https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/), który przestrzega przed nadmiernym używaniem tej dyrektywy, przedstawia potencjalne problemy i proponuje alternatywne rozwiązania.
+Podczas studiowania meandrów serwera NGINX, kilkukrotnie spotkałem się ze stwierdzeniem, że wyrażeń z `if` należy bezwzględnie unikać. Na pewno są ku temu pewne przesłanki, zwłaszcza że sami autorzy wskazuję na potencjalne problemy związane z tą instrukcją i przypadki użycia, które opisano dokładniej w artykule [Pitfalls and Common Mistakes - Using if](https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/#using-if).
+
+Istnieje jeszcze drugi, poświęcony temu tematowi, specjalny artykuł pod tytułem [If is Evil... when used in location context](https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/), który przestrzega przed nadmiernym używaniem tej dyrektywy (polecam się z nim zaznajomić, ponieważ przedstawia potencjalne problemy i proponuje alternatywne rozwiązania), jednak co istotne, **jedynie w kontekście lokalizacji**, sugerując tym samym, że w kontekście `server` jego użycie jest bezpieczniejsze i bardziej przewidywalne. Autorzy tłumaczą to tak:
+
+<p class="ext">
+  <em>
+    Directive if has problems when used in location context, in some cases it doesn’t do what you expect but something completely different instead. In some cases it even segfaults. It’s generally a good idea to avoid it if possible.
+  </em>
+</p>
+
+Problemy, które mogą się pojawić mają związek głównie z tym, że dyrektywa `if` jest częścią modułu przepisywania, który bezwzględnie ocenia podane instrukcje.
+
+Niestety język konfiguracji jest momentami bardzo nieprzewidywalny. Na przykład, budując konfigurację, która złożona będzie z dwóch instrukcji `if` w tym samym bloku, które spełniają pewne kryteria, tylko druga z nich zostanie wykonana. W innych przypadkach może dojść do sytuacji, że niektóre zmienne nie zostaną po prostu wykonane z powodu obecności dyrektywy `if` — NGINX oczekuje, że zostaną ponownie zadeklarowane w ramach danego bloku.
+
+Spójrz na poniższy przykład:
+
+```nginx
+location / {
+
+  add_header X 1;
+  add_header Y 2;
+
+  set $a 1;
+  if($a == 1) {
+    add_header Foo Bar;
+  }
+
+}
+```
+
+Wewnątrz bloku lokalizacji zadeklarowaliśmy dwa nagłówki. Na pierwszy rzut oka wydawać by się mogło, że po wejściu do kontekstu lokalizacji zostaną dodane dwa nagłówki odpowiedzi, tj. <span class="h-b">X</span> oraz <span class="h-b">Y</span>. Gdy podczas przetwarzania całego bloku dojdziemy do instrukcja `if` i sprawdzany warunek zostanie spełniony (co się dzieje w powyższym przykładzie), pozostałe instrukcje w bloku lokalizacji nie zostaną wykonane! Aby uzyskać pełne wykonanie, należy ponownie zadeklarować większość zmiennych wewnątrz bloku `location` a także wewnątrz bloku `if`, wszystko po to, by zostały one wykonane w przypadku spełnienia warunku.
 
 Analizując konfiguracje serwera NGINX, na pewno nie raz spotkałeś się z podobnym zapisem:
 
