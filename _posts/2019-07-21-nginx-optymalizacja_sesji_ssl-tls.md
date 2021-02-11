@@ -11,7 +11,9 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-Optymalizacja sesji SSL/TLS powinna być jednym z ważniejszych kroków, które należy wykonać, w celu poprawienia ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które to potrafi wprowadzić niemałe opóźnienia, wydłużając czasy odpowiedzi i w konsekwencji obniżając ogólną wydajność.
+Optymalizacja sesji SSL/TLS powinna być jednym z ważniejszych kroków, które należy wykonać, w celu poprawienia ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych. Dotyczy to zwłaszcza aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które potrafi wprowadzić niemałe opóźnienia (notabene powodujące najwięcej problemów), wydłużając czasy odpowiedzi i obniżając ogólną wydajność, w konsekwencji wpływając na szybkość reakcji web aplikacji.
+
+W tym wpisie rozmawiać będziemy jedynie o niektórych parametrach protokołu SSL/TLS, które możemy zmodyfikować z poziomu serwera NGINX. Optymalizacja wydajności to niekończąca się podróż, ponieważ zawsze istnieje jakiś element do poprawy lub coś nowego do przetestowania. Nie ma też jednego zalecenia, ponieważ wiele zależy od rodzaju danych, częstotliwości zmian i oczekiwań klientów.
 
 Zanim przeglądarka internetowa będzie mogła bezpiecznie wymieniać dane aplikacji z serwerem sieciowym, takie jak żądania i odpowiedzi protokołu HTTP, musi najpierw ustalić parametry kryptograficzne bezpiecznej sesji. Proces ten jest kluczowym i nieodłącznym elementem podczas zestawiania szyfrowanego połączenia, a co istotne, jednym z wykonywanych najdłużej (może zająć nawet 3/4 całego czasu od momentu wysłania żądania do otrzymania faktycznych danych!) podczas nawiązywania sesji między obiema stronami komunikacji.
 
@@ -39,7 +41,7 @@ Natomiast jeśli chodzi o proces optymalizacji, to istnieją tak naprawdę dwa o
 
 Należy mieć także świadomość, że optymalizacja sesji SSL/TLS nie jest jedynym elementem, ponieważ istnieją inne, równie ważne (jeśli nie ważniejsze) kroki, które poprawiają ogólną wydajność aplikacji webowej. Możemy zaliczyć do nich włączenie protokołu HTTP/2, zastosowanie mechanizmów pamięci podręcznej, stosowanie usługi CDN, która może uprościć wszelkie optymalizacje (zerknij do artykułu [How does a CDN improve load times?](https://www.cloudflare.com/learning/cdn/performance/)), optymalizacja połączeń do bazy czy po prostu optymalizacja kodu. Kluczowe, jeśli nie najważniejsze z tego wszystkiego jest jednak dostarczanie treści w taki sposób, aby zapewnić minimalną ilości danych, które będzie musiał pobrać klient.
 
-W tym wpisie rozmawiać będziemy jedynie o niektórych parametrach protokołu SSL/TLS, które możemy zmodyfikować z poziomu serwera NGINX nieodłącznie wpływających na szybkość reakcji aplikacji. Oczywiście nie są to jedyne możliwości poprawy tego zestawu protokołów i to nie tylko jeśli chodzi o wydajność, ale także o bezpieczeństwo. Po drugie, pamiętaj też, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów opisanych w tym artykule, jest zdecydowanie czymś przesadzonym, ponieważ jak już wspomniałem, wydajność połączenia zależy od wielu czynników.
+Oczywiście opisane w tym artykule porady nie są jedynymi zalecanymi wskazaniami dla protokołów SSL/TLS i to nie tylko jeśli chodzi o wydajność, ale także o bezpieczeństwo. Po drugie, pamiętaj też, że obsesja na punkcie wartości i skrupulatnego dostrajania parametrów opisanych w tym artykule, jest zdecydowanie czymś przesadzonym, ponieważ jak już wspomniałem, wydajność połączenia zależy od wielu czynników.
 
 ## Narzut protokołu TLS
 
@@ -59,18 +61,18 @@ Przy czym pamiętajmy, że protokół TLSv1.3 umożliwia tzw. wznowienie zeroweg
 
 - **TLSv1.2 (i starsze)**
 
-  - nowe połączenie: 4 RTT + DNS
-  - wznowienie połączenia: 3 RTT + DNS
+  - nowe połączenie: 4 RTT (1x TCP, 2xTLS, 1x HTTP) + DNS
+  - wznowienie połączenia: 3 RTT (1x TCP, 1xTLS, 1x HTTP) + DNS
 
 - **TLSv1.3**
 
-  - nowe połączenie: 3 RTT + DNS
-  - wznowienie połączenia: 3 RTT + DNS
+  - nowe połączenie: 3 RTT (1x TCP, 1xTLS, 1x HTTP) + DNS
+  - wznowienie połączenia: 3 RTT (1x TCP, 1xTLS, 1x HTTP) + DNS
 
 - **TLSv1.3 + 0-RTT**
 
-  - nowe połączenie: 3 RTT + DNS
-  - wznowienie połączenie: 2 RTT + DNS
+  - nowe połączenie: 3 RTT (1x TCP, 1xTLS, 1x HTTP) + DNS
+  - wznowienie połączenie: 2 RTT (1x TCP, 1x[TLS+HTTP]) + DNS
 
 Widzisz sam, że po przejściu na obecnie najnowszą wersję protokołu TLS wzrost wydajności może być naprawdę znaczny.
 
@@ -257,9 +259,9 @@ htrace.sh -u https://badssl.com
 
 ## Rozmiar i typ pamięci podręcznej
 
-Jak już doskonale wiemy, w przypadku protokołu HTTPS, połączenie wymaga dodatkowego uzgadniania. Dzieje się tak, ponieważ uzgadnianie TLS wymaga co najmniej jednej podróży w obie strony (chociaż protokół TLSv1.3 ma tzw. uzgadnianie powtarzania 0-RTT, które zwykle jednak nie jest obsługiwane przez przeglądarki i serwery). Co istotne, użycie protokołu HTTP/2 i włączenie pamięci podręcznej sesji TLS zapewni szybszą wydajność HTTPS dla połączeń początkowych, a także późniejszego ładowania stron niż w przypadku protokołu HTTP.
+Jak już doskonale wiemy, w przypadku protokołu HTTPS, połączenie wymaga dodatkowego uzgadniania. Dzieje się tak, ponieważ uzgadnianie TLS wymaga co najmniej jednej podróży w obie strony (chociaż protokół TLSv1.3 ma tzw. uzgadnianie powtarzania 0-RTT, które nie jest w pełni obsługiwane przez niektóre przeglądarki i serwery). Co istotne, użycie protokołu HTTP/2 i włączenie pamięci podręcznej sesji TLS zapewni szybszą wydajność HTTPS dla połączeń początkowych, a także późniejszego ładowania stron niż w przypadku protokołu HTTP.
 
-Pierwszy z omawianych parametrów zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), aby pamięć podręczna była zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SS/TLS jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych). Ustawienie tego parametru jest wręcz kluczowe w przypadku dużej ilości kontekstów `server {...}` (wirtualnych hostów), ponieważ ich duża ilość może zwiększyć wykorzystanie pamięci.
+Omówmy w takim razie pierwszy z parametrów, mianowicie pamięć podręczną sesji SSL/TLS. Zastosowaniei tej techniki zwiększa ogólną wydajność połączeń (zwłaszcza połączeń typu Keep-Alive). Wartość 10 MB jest dobrym punktem wyjścia (1 MB współdzielonej pamięci podręcznej może pomieścić około 4000 sesji), aby pamięć podręczna była zmieniana codziennie. Dzięki parametrowi `shared` pamięć dla połączeń SS/TLS jest współdzielona przez wszystkie procesy robocze (co więcej pamięć podręczna o tej samej nazwie może być używana na kilku serwerach wirtualnych). Ustawienie tego parametru jest wręcz kluczowe w przypadku dużej ilości kontekstów `server {...}` (wirtualnych hostów), ponieważ ich duża ilość może zwiększyć wykorzystanie pamięci.
 
 Celem pamięci podręcznej sesji SSL/TLS po stronie serwera jest zmniejszenie użycia procesora oraz zwiększenie wydajność z punktu widzenia klientów, dzięki wyeliminowaniu konieczność ciągłej renegocjacji sesji — czyli przeprowadzania nowego (i czasochłonnego) uzgadniania SSL/TLS przy każdym żądaniu (po więcej informacji zerknij do artykułu [TLS Session Resumption: Full-speed and Secure](https://blog.cloudflare.com/tls-session-resumption-full-speed-and-secure/)).
 
@@ -383,19 +385,19 @@ W przypadku biletów sesji klucz szyfrowania biletu sesji jest słabym punktem, 
 
 Problem kluczy sesji dotyczy tak naprawdę ich obecnej implementacji (inżynierowie serwera NGINX zalecali ich wyłączenie ze względu na brak odpowiednich mechanizmów odpowiedzialnych za rotację kluczy), a nie tego, że sam mechanizm jest niebezpieczny czy w jakiś sposób podatny (nie do końca jest to prawda, o czym się zaraz przekonasz). Po pierwsze, włączając go, nie zapewnisz poufności przekazywania i spowodujesz, że PFS będzie bezużyteczny, ponieważ przy korzystaniu z mechanizmu biletów sesji, wszystkie klucze szyfrowania będą ostatecznie szyfrowane tylko jednym kluczem szyfrowania, tj. kluczem biletu sesji. Dlatego jeśli PFS jest silnym wymaganiem, musisz upewnić się, że czas życia identyfikatorów sesji nie jest zbyt długi. Ponadto należy okresowo zmieniać klucz dla biletów sesji. Moim zdaniem, bilety sesji nie powinny być w ogóle wykorzystywane z jeszcze jednego powodu: dla wersji TLSv1.2 i niższych, ujawnia się ich największa wada — są one wysyłane w czystej postaci na początku pierwotnego połączenia.
 
-  > Ogólnie rzecz biorąc, funkcja wznawiania sesji TLS przyspiesza ponowne połączenia klientów, ponieważ nie ma potrzeby wykonywania pełnego uzgadniania protokołu TLS. Zamiast tego do weryfikacji autentyczności połączenia używana jest wartość znana z poprzedniej sesji. Jeśli serwer nie rotuje lub nie odnawia poprawnie swoich sekretów, wznowienie sesji niszczy poufność przekazywania.
-
-W najnowszej wersji protokołu TLS identyfikatory sesji i bilety sesji zostały zastąpione innym mechanizmem. Jak już wiemy, w przypadku protokołów do TLSv1.2 istnieją dwa sposoby wznowienia połączenia, właśnie za pomocą identyfikatorów sesji i biletów sesji. Oba mechanizmy są przestarzałe w TLSv1.3 i zostały połączone w celu utworzenia nowego trybu zwanego wznowieniem PSK (klucz wstępny). Pomysł polega na tym, że po ustanowieniu sesji klient i serwer mogą uzyskać wspólny sekret zwany „głównym sekretem wznowienia”. Może to być przechowywane na serwerze z identyfikatorem (styl identyfikatora sesji) lub zaszyfrowane kluczem znanym tylko serwerowi (styl biletu sesji). Ten bilet sesji jest wysyłany do klienta i wykorzystany podczas wznawiania połączenia.
-
-Mówiąc bardziej technicznie, w TLSv1.3 stnieją dwa nowe mechanizmy wznawiania sesji, `psk_ke` i `psk_dhe_ke`. Pierwszy z nich zapewnia taką samą implementację, a tym samym bezpieczeństwo, co wznawianie sesji w aktualnych standardach TLS (do wersji TLSv1.2). Drugi czyni go bardziej bezpiecznym poprzez włączenie dodatkowego współdzielonego klucza (EC)DHE (PSK) do wyprowadzonego klucza głównego przy pierwszym połączeniu. Więcej do poczytania na ten temat znajdziesz w artykule [The future of session resumption - Forward secure PSK key agreement in TLS 1.3](https://timtaubert.de/blog/2017/02/the-future-of-session-resumption/).
-
-W TLSv1.3 wznowienie sesji jest dostępne tak naprawdę tylko za pośrednictwem biletów sesji, a wiele biletów może być wysyłanych z serwera do klienta. Zapewnia to następujące korzyści, m.in. gdy bilety nie są ponownie wykorzystywane, kolejne sesje klienta nie mogą być ze sobą powiązane przez osobę trzecią, w przypadku uwierzytelniania po uzgadnianiu serwer może wysyłać różne bilety asynchronicznie dla każdej tożsamości używanej przez klienta.
-
 Na poniższym zrzucie widać, że wiadomość <span class="h-b">NewSessionTicket</span> jest wysyłana z serwera do klienta przed wiadomością <span class="h-b">ChangeCipherSpec</span>:
 
 <p align="center">
   <img src="/assets/img/posts/tls_and_session_tickets.png">
 </p>
+
+Ogólnie rzecz biorąc, funkcja wznawiania sesji TLS przyspiesza ponowne połączenia klientów, ponieważ nie ma potrzeby wykonywania pełnego uzgadniania protokołu TLS. Zamiast tego do weryfikacji autentyczności połączenia używana jest wartość znana z poprzedniej sesji. Jeśli serwer nie rotuje lub nie odnawia poprawnie swoich sekretów, wznowienie sesji niszczy poufność przekazywania.
+
+W najnowszej wersji protokołu TLS identyfikatory sesji i bilety sesji zostały zastąpione innym mechanizmem. Jak już wiemy, w przypadku protokołów do TLSv1.2 istnieją dwa sposoby wznowienia połączenia, właśnie za pomocą identyfikatorów sesji i biletów sesji. Oba mechanizmy są przestarzałe w TLSv1.3 i zostały połączone w celu utworzenia nowego trybu zwanego wznowieniem PSK (klucz wstępny). Pomysł polega na tym, że po ustanowieniu sesji klient i serwer mogą uzyskać wspólny sekret zwany „głównym sekretem wznowienia”. Może to być przechowywane na serwerze z identyfikatorem (styl identyfikatora sesji) lub zaszyfrowane kluczem znanym tylko serwerowi (styl biletu sesji). Ten bilet sesji jest wysyłany do klienta i wykorzystany podczas wznawiania połączenia.
+
+Mówiąc bardziej technicznie, w TLSv1.3 stnieją dwa nowe mechanizmy wznawiania sesji, `psk_ke` i `psk_dhe_ke`. Pierwszy z nich zapewnia taką samą implementację, a tym samym bezpieczeństwo, co wznawianie sesji w aktualnych standardach TLS (do wersji TLSv1.2). Drugi czyni go bardziej bezpiecznym poprzez włączenie dodatkowego współdzielonego klucza (EC)DHE (PSK) do wyprowadzonego klucza głównego przy pierwszym połączeniu. Więcej do poczytania na ten temat znajdziesz w artykule [The future of session resumption - Forward secure PSK key agreement in TLS 1.3](https://timtaubert.de/blog/2017/02/the-future-of-session-resumption/).
+
+  > Wznowienie sesji w przypadku protokołu TLSv1.2 można zaimplementować za pomocą identyfikatorów sesji lub biletów sesji. Protokół TLSv1.3 porzuca obie koncepcje zastępując je trybem klucza wstępnego (PSK), który po wstępnym uzgadnianiu, jest wysyłany przez serwer (zależy tylko od niego) do klienta. Klient jedynie przechowuje tożsamość PSK wraz z własnymi kluczami sesji. W kolejnym uzgadnianiu klient przekazuje tę tożsamość, a serwer, w zależności od zawartości, odszyfrowuje bilet i wykorzystuje zawarte w nim klucze sesji oraz stany połączeń wymagane do wznowienia sesji lub używa zawartego klucza wyszukiwania, aby znaleźć klucze sesji i stany połączeń we własnej bazie danych.
 
 Inny problem z obecnymi implementacjami to usuwanie informacji o sesjach. Uważam, że jedynym sposobem na prawdziwe usunięcie danych sesyjnych jest zastąpienie ich nową sesją — czyli odpowiednia rotacja w celu ich zniszczenia. Idealną praktyką jest generowanie losowych kluczy biletów sesji oraz ich częsta wymiana. Ciekawostka: na przykład Twitter rotuje klucze co 12 h, zaś stare usuwa co 36 h. W ramach poszerzenia swojej wiedzy polecam także zapoznać się z niezwykle interesującą pracą [Measuring the Security Harm of TLS Crypto Shortcut]({{ site.url }}/assets/pdfs/forward-secrecy-imc16.pdf) <sup>[PDF]</sup>, która opisuje zastosowane skróty bezpieczeństwa w implementacjach TLS w celu ograniczenia kosztów obliczeń kryptograficznych i podróży zaszyfrowanych danych w obie strony. Warto wiedzieć, że TLSv1.3 rozwiązuje (łagodzi) w pewien sposób problem rotacji, zaprzęgając do tego klucze Diffie-Hellman (więcej informacji uzyskasz w artykule [How to botch TLS forward secrecy](https://www.imperialviolet.org/2013/06/27/botchingpfs.html)). Koniecznie zapoznaj się także ze świetnym opisem dotyczącym [implementacji sesji po stronie serwerów TLS](https://timtaubert.de/blog/2014/11/the-sad-state-of-server-side-tls-session-resumption-implementations/).
 
@@ -607,6 +609,8 @@ Na koniec należy wspomnieć o parametrze TTFB (ang. _Time to first byte_), któ
 
   > Według [Understanding Resource Timing - Slow Time to First Byte](https://developers.google.com/web/tools/chrome-devtools/network/understanding-resource-timing#slow_time_to_first_byte) TTFB jest czasem spędzonym na oczekiwaniu na pierwszą odpowiedź, znanym również jako czas do pierwszego bajtu. W tym czasie oprócz czasu spędzonego na oczekiwaniu na dostarczenie odpowiedzi przez serwer jest rejestrowane opóźnienie w obie strony do serwera.
 
-Zgodnie z powyższym dokumentem, aby rozwiązać problem wysokiego TTFB, najpierw powinniśmy zredukować połączenia sieciowe między klientem a serwerem (a przyczyn może być wiele, np. niezoptymalizowane reguły firewall'a czy problemy z tabelami routingu). W tym wypadku najlepiej jest uruchomić aplikację lokalnie i sprawdzić, czy nadal istnieje duży TTFB. Jeśli tak, aplikacja musi zostać zoptymalizowana. Może to oznaczać optymalizację zapytań do bazy danych, implementację pamięci podręcznej dla określonych części treści lub modyfikację konfiguracji serwera HTTP. Natomiast jeśli TTFB lokalnie jest niskie, problem najprawdopodobniej stanowią sieci między klientem a serwerem. Pamiętajmy jednak, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi. Drugim parametrem, który nas interesuje, zwłaszcza w kontekście optymalizacji, jest parametr TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/).
+Zgodnie z powyższym dokumentem, aby rozwiązać problem wysokiego TTFB, najpierw powinniśmy zredukować połączenia sieciowe między klientem a serwerem (a przyczyn może być wiele, np. niezoptymalizowane reguły firewall'a czy problemy z tabelami routingu). W tym wypadku najlepiej jest uruchomić aplikację lokalnie i sprawdzić, czy nadal istnieje duży TTFB. Jeśli tak, aplikacja musi zostać zoptymalizowana. Może to oznaczać optymalizację zapytań do bazy danych, implementację pamięci podręcznej dla określonych części treści lub modyfikację konfiguracji serwera HTTP. Natomiast jeśli TTFB lokalnie jest niskie, problem najprawdopodobniej stanowią sieci między klientem a serwerem.
 
-Na koniec, nie zapominajmy o optymalizacji protokołu TCP, w tym regulacji okna przeciążenia, szybkiego otwieranie TCP, obsługi ponownego użycia czy wyborze bardziej optymalnego algorytmu kontroli przeciążenia.
+Pamiętajmy jednak, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi. Drugim parametrem, który nas interesuje, zwłaszcza w kontekście optymalizacji, jest parametr TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/).
+
+Nie zapominajmy także o optymalizacji protokołu TCP, w tym regulacji okna przeciążenia, szybkiego otwieranie TCP, obsługi ponownego użycia czy wyborze bardziej optymalnego algorytmu kontroli przeciążenia.
