@@ -76,10 +76,10 @@ Widzisz sam, że po przejściu na obecnie najnowszą wersję protokołu TLS wzro
 
 Głównym problemem związanym z wydajnością uzgadniania TLS nie jest (jak mogłoby się wydawać) to, jak długo trwa cały proces, ale kiedy ma miejsce podczas komunikacji między klientem a serwerem. Ponieważ uzgadnianie jest częścią tworzenia bezpiecznego połączenia, musi nastąpić przed wymianą jakichkolwiek danych. Wydłuża to czas, w którym przeglądarka nie może zrobić nic innego, spowalniając wydajność aplikacji internetowej. Przeglądarka czeka, dopóki nie otrzyma początkowego zasobu, tym samym nie może pobrać równolegle innych, takich jak pliki CSS lub obrazy, ponieważ nie uzyskała tej początkowej informacji, która mówi jej właśnie o innych zasobach. Dzieje się tak w przypadku każdej odwiedzanej strony internetowej: przeglądarka jest blokowana, aby uzyskać tę pierwszą odpowiedź.
 
-Jak zapewne możesz się domyślać, uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Samo uzgadnianie jest procesem, który przeglądarka i serwer wykonują, aby zdecydować, w jaki sposób się ze sobą komunikować tworząc bezpieczne połączenie. Niektóre z rzeczy, które mają miejsce podczas uścisku dłoni, to:
+Jak zapewne możesz się domyślać, uzgadnianie TLS ma wiele odmian i należy pamiętać, że dokładny narzut tego protokołu zależy od różnych czynników, a znaczący na niego wpływ będzie mieć zmienny rozmiar większości wiadomości oraz różne wzorce ruchu. Samo uzgadnianie jest procesem, który przeglądarka i serwer wykonują, aby zdecydować, w jaki sposób komunikować się ze sobą tworząc bezpieczne połączenie. Niektóre z rzeczy, które mają miejsce podczas uścisku dłoni, to:
 
 - potwierdzenie tożsamości serwera i ewentualnie klienta
-- ustalenie, jakie szyfry, podpisy i inne opcje obsługuje każda ze stron, które zostaną użyte do podczas szyfrowania połączenia
+- ustalenie, jakie szyfry, podpisy i inne opcje obsługuje każda ze stron, które zostaną użyte podczas szyfrowania połączenia
 - tworzenie i wymianę kluczy do późniejszego ich wykorzystania podczas szyfrowania danych
 
 Tak naprawdę, zarówno klient, jak i serwer muszą wykonać symetryczne szyfrowanie i deszyfrowanie, analizę protokołów, obliczenie klucza prywatnego, weryfikację certyfikatu i inne obliczenia, które wydłużają całe połączenie. W istocie uzgadnianie TLS polega na wzajemnej weryfikacji klienta i serwera, uzgadnianiu wspólnego zestawu szyfrów i opcji bezpieczeństwa, a następnie kontynuowaniu konwersacji przy użyciu tych wszystkich rzeczy.
@@ -134,7 +134,7 @@ Zachęcam Cię jednak, abyś wykorzystał sniffer sieciowy i samemu zbadał cał
 
 - <span class="h-a">Application Data</span> - są to zaszyfrowane rekordy wymieniane po uzgodnieniu (można je odszyfrować i zdekodować otrzymując dane HTTP)
 
-Co istotne, wymieniane dane pobrane z warstwy aplikacji (tj. <span class="h-b">Application Data</span>) dostarczane przez protokół TLS są przesyłane w protokole rekordu — mają nagłówek TLS Record (o długości do 16 KB), określający zasady podziału SSL/TLS. Dla każdego wysłanego rekordu musimy doliczyć nagłówek o rozmiarze 5 bajtów, a także nagłówek TLS Handshake o rozmiarze 4 bajtów, określający wspólne parametry kryptograficzne dla obu stron komunikacji (w tym miejscu warto zapoznać się z [RFC 5246](https://tools.ietf.org/html/rfc5246), gdzie opisane zostały oba typy protokołów). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów.
+Co istotne, wymieniane dane pobrane z warstwy aplikacji (tj. <span class="h-b">Application Data</span>) dostarczane przez protokół TLS są przesyłane w protokole rekordu — mają nagłówek TLS Record o długości do 16 KB, określający zasady podziału SSL/TLS. Dla każdego wysłanego rekordu musimy doliczyć nagłówek o rozmiarze 5 bajtów, a także nagłówek TLS Handshake o rozmiarze 4 bajtów, określający wspólne parametry kryptograficzne dla obu stron komunikacji (w tym miejscu warto zapoznać się z [RFC 5246](https://tools.ietf.org/html/rfc5246), gdzie opisane zostały oba typy protokołów). Najczęstszy przypadek można uprościć w ten sposób, że każda strzałka na powyższym schemacie jest rekordem TLS, więc mamy 4 wymienione rekordy o łącznej wielkości 20 bajtów. Każda wiadomość ma dodatkowy nagłówek (z wyjątkiem nagłówka <span class="h-b">ChangeCipherSpec</span>), więc mamy 7 razy dodatkowy nagłówek uzgadniania, co daje łącznie 28 bajtów.
 
 Generalnie, do każdego rekordu zostanie dodane od 20 do 40 bajtów narzutu na nagłówek, adres MAC i opcjonalne wypełnienie. Jeśli rekord zmieści się w jednym pakiecie TCP, musimy również dodać narzut IP i TCP, czyli 20-bajtowy nagłówek dla IP i 20-bajtowy nagłówek dla TCP bez dodatkowych opcji. W rezultacie każdy rekord może zająć od 60 do 100 bajtów. Dla typowej maksymalnej jednostki transmisji (MTU) wielkości 1500 bajtów, ta struktura pakietu przekłada się na minimum 6% narzutu ramkowania.
 
@@ -153,7 +153,7 @@ Podsumowując nasz przykład, wygląda to tak:
 150 + 85 + 4500 + 50 + 2 + 20 + 28 + 24 = 4859 bajtów
 ```
 
-Całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku około 5 KB. Wiemy także, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Przypomnij sobie teraz mechanizm wznawiania sesji dzięki któremu, po ustanowieniu sesji TLS, można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 350 bajtów.
+Całkowity narzut związany z ustanowieniem nowej sesji TLS wynosi w tym wypadku około 5 KB. Wiemy także, że dołożenie jeszcze jednego certyfikatu zwiększy rozmiar o 1500 bajtów. Przypomnij sobie teraz mechanizm wznawiania sesji dzięki któremu, po ustanowieniu sesji TLS, można ją wznowić, pomijając niektóre z ustanowionych wcześniej wiadomości. Pozwala to znacznie zminimalizować całkowity narzut potrzebny przy ustanowieniu nowej sesji TLS, który w przypadku wznowienia może wynieść średnio około 350 bajtów. Z drugiej strony, optymalizacja polegająca na wykorzystaniu mechanizmu wznawianiu może nie mieć aż tak drastycznego wpływu na wydajność jak się wstępnie wydaje.
 
 Widzisz, że w przypadku protokołu SSL/TLS najbardziej zróżnicowaną (pod kątem rozmiaru) częścią są certyfikaty. Dlatego może to być pierwszy element do optymalizacji, ponieważ oprócz ich rozmiaru, znaczenie ma również ich ilość (certyfikat serwera i wszystkie pośrednie certyfikaty wystawcy w łańcuchu certyfikatów, bez certyfikatu głównego). Z racji tego, że rozmiary certyfikatów różnią się w zależności od użytych parametrów i kluczy, przyjąłbym wcześniejszą wartość 1500 bajtów na certyfikat (certyfikaty z podpisem własnym mogą mieć znacznie mniejszy rozmiar) co jak widzisz jest dosyć pokaźnym rozmiarem biorąc pod uwagę całkowity rozmiar ładunku TLS.
 
@@ -178,7 +178,6 @@ Podsumowując i dodając jeszcze kilka istotnych informacji:
 - TLS wydaje się być wyłącznie powiązany z procesorem, ponieważ wszelkie optymalizacje mające na celu zmniejszenie ruchu w sieci (zwłaszcza sieci z dużymi opóźnieniami i stratami pakietów) mają niewielki wpływ na całkowitą przepustowość serwera
 - koszty procesora związane z zestawieniem połączenia TLS mają większy wpływ na przepustowość serwera niż koszty procesora związane z wymianą danych za pomocą tego protokołu
 - koszty organizowania struktur danych TLS, obliczania kluczy z klucza wstępnego i wykonywania innych różnych operacji w ramach protokołu TLS pochłaniają niewielką ilość całkowitego kosztu wydajności
-- optymalizacja polegająca na wykorzystaniu mechanizmu wznawianiu sesji może nie mieć aż tak drastycznego wpływu na wydajność jak się wstępnie wydaje
 
 Przy okazji koniecznie zapoznaj się z dokumentem [Performance Analysis of TLS Web Servers]({{ site.url }}/assets/pdf/tls-tocs.pdf). Pamiętaj też, że przyjąłem wartości raczej orientacyjne i dobrze, abyś zweryfikował je z dostępnymi dokumentami RFC, np. [Overview and Analysis of Overhead Caused by TLS](https://tools.ietf.org/id/draft-mattsson-uta-tls-overhead-01.html). Chodzi jednak o uzmysłowienie sobie ile danych jest przenoszonych podczas wykorzystania protokołu TLS niż autorytatywne określenie wszystkich wartości.
 
@@ -192,7 +191,7 @@ Możesz teraz zadać pytanie, w jaki sposób zmierzyć czas zestawiania sesji SS
 
 <sup><i>Diagram pochodzi z artykułu [A Question of Timing](https://blog.cloudflare.com/a-question-of-timing/).</i></sup>
 
-Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`). Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudf-lare.com/a-question-of-timing/)). Poniżej znajduje się podobny diagram do powyższego, pokazujący czasy z poziomu przeglądarki internetowej:
+Przedstawia on m.in. ile czasu serwer spędził na uzgadnianiu TLS (`%{time_appconnect} - %{time_connect}`). Oczywiście do wyliczenia wszystkich wartości możesz użyć przeglądarki i dostarczonych z nią narzędzi (spójrz na artykuł [A Question of Timing](https://blog.cloudf-lare.com/a-question-of-timing/)). Poniżej znajduje się podobny diagram do powyższego, pokazujący zmierzone czasy z poziomu przeglądarki internetowej:
 
 <p align="center">
   <img src="/assets/img/posts/timings_browser.png">
@@ -211,7 +210,7 @@ DNS lookup: 0.002334 TLS handshake: 0.637931 TTFB including connection: 0.766321
 DNS lookup: 0.002227 TLS handshake: 0.643825 TTFB including connection: 0.772996 TTFB: .129171 Total time: 0.773133
 ```
 
-Oraz narzędzia [htrace.sh](https://github.com/trimstray/htrace.sh) włączając opcję `CURL_TIMERS` w pliku konfiguracyjnym:
+Oraz narzędzia [htrace.sh](https://github.com/trimstray/htrace.sh) uruchamiając go z parametrem `--timers` lub włączając opcję `CURL_TIMERS` w pliku konfiguracyjnym:
 
 ```
 htrace.sh -u https://badssl.com
@@ -270,7 +269,7 @@ Jeśli rozmiar pamięci podręcznej jest zbyt mały, może dojść do sytuacji, 
 [alert] [...] could not allocate new session in SSL session shared cache "NGX_SSL_CACHE" while SSL handshaking [...]
 ```
 
-Informacja ta mówi o tym, że NGINX nie był w stanie przydzielić nowej sesji we współdzielonej pamięci podręcznej SSL/TLS i nie powoduje błędów dla klientów. Jedyny skutkiem ubocznym jest to, że klienci, którzy ponownie wykonują połączenie, ponoszą niewielką utratę wydajności, ponieważ nie mają wznowienia sesji SSL. Taka sytuacja może się zdarzyć, jeśli pamięć podręczna jest pełna, a NGINX nie był w stanie zwolnić wystarczającej ilości miejsca, usuwając ostatnio używaną sesję. Rozwiązaniem jest zmniejszenie limitów czasu sesji (parametr: `ssl_session_timeout`) lub zwiększenie rozmiaru pamięci współdzielonej, aby uniknąć przepełnienia. W ten sposób sesje wygasają i zostają usunięte z pamięci podręcznej, zanim zostanie ona przepełniona.
+Informacja ta mówi jedynie o tym, że NGINX nie był w stanie przydzielić nowej sesji we współdzielonej pamięci podręcznej. Nie oznacza ona błędów po stronie klienta i jednym znanym skutkiem ubocznym będzie to, że klienci, którzy ponownie wykonują połączenie, ponoszą niewielką utratę wydajności, ponieważ nie mają wznowienia sesji. Taka sytuacja może się zdarzyć, jeśli pamięć podręczna jest pełna, a NGINX nie był w stanie zwolnić wystarczającej ilości miejsca, usuwając ostatnio używaną sesję. Rozwiązaniem jest zmniejszenie limitów czasu sesji (parametr: `ssl_session_timeout`) lub zwiększenie rozmiaru pamięci współdzielonej, aby uniknąć przepełnienia. W ten sposób sesje powinny wygasnąć i zostać usunięte z pamięci podręcznej, zanim zostanie ona ponownie przepełniona.
 
 Co niezwykle istotne, parametr ten jest ściśle związany z opcją odpowiedzialną za [czas życia parametrów sesji]({{ site.url }}/posts/2019-07-21-nginx-optymalizacja_sesji_ssl-tls/#czas-życia-parametrów-sesji). Oficjalna dokumentacja podaje przykład i tłumaczy tą zależność jak poniżej:
 
