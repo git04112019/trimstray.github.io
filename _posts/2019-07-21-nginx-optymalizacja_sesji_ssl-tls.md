@@ -11,7 +11,7 @@ toc: true
 last_modified_at: 2021-01-18 00:00:00 +0000
 ---
 
-Optymalizacja sesji SSL/TLS powinna być jednym z ważniejszych kroków, które należy wykonać, w celu poprawienia ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych. Dotyczy to zwłaszcza tych aplikacji, które wymagają pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, a które potrafi wprowadzić niemałe opóźnienia. To właśnie opóźnienia powodują najwięcej problemów, ponieważ wydłużają czasy odpowiedzi i obniżają ogólną wydajność, a w konsekwencji wpływają na szybkość reakcji web aplikacji.
+Optymalizacja sesji SSL/TLS powinna być jednym z ważniejszych kroków, które należy wykonać, w celu poprawienia ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych. Dotyczy to zwłaszcza aplikacji wymagających pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, które potrafi wprowadzić zauważalne opóźnienia. To właśnie opóźnienia powodują najwięcej problemów, ponieważ wydłużają czasy odpowiedzi i obniżają ogólną wydajność, a w konsekwencji wpływają na szybkość reakcji web aplikacji.
 
 Poprawienie wydajności to niekończąca się podróż, ponieważ zawsze istnieje jakiś element do zmiany lub coś nowego do przetestowania. Nie ma też jednego zalecenia, ponieważ wiele zależy od rodzaju danych, częstotliwości zmian i oczekiwań klientów. W tym wpisie rozmawiać będziemy jedynie o niektórych parametrach protokołu SSL/TLS, które możemy zmodyfikować z poziomu serwera NGINX.
 
