@@ -611,11 +611,19 @@ Niestety, ta kontrola nie jest wykonywana równolegle. W większości przegląda
 
 Na koniec należy wspomnieć o parametrze TTFB (ang. _Time to first byte_), który możemy traktować jako czas od wysłania przez klienta żądania HTTP do pierwszego bajta odebranych przez niego danych. Mówiąc prościej, jest to miara tego, jak długo przeglądarka musi czekać, zanim otrzyma swój pierwszy bajt danych z serwera. Im dłużej trwa pobranie tych danych, tym dłużej trwa renderowanie strony. Jednak parametr ten nie zawsze zależy od serwera. Przykładem mogą być zasoby, które przekazywane są przez serwery CDN — czas potrzebny na ich odebranie może zostać wliczony do TTFB. Z drugiej strony, wysoki TTFB oznacza najczęściej po prostu wolne czasy odpowiedzi z serwera, a nie problemy z samym dostarczeniem żądanych przez klienta treści (za to odpowiadają raczej inne opóźnienia).
 
-  > Według [Understanding Resource Timing - Slow Time to First Byte](https://developers.google.com/web/tools/chrome-devtools/network/understanding-resource-timing#slow_time_to_first_byte) TTFB jest czasem spędzonym na oczekiwaniu na pierwszą odpowiedź, znanym również jako czas do pierwszego bajtu. W tym czasie oprócz czasu spędzonego na oczekiwaniu na dostarczenie odpowiedzi przez serwer jest rejestrowane opóźnienie w obie strony do serwera. W celu sprawdzenia opóźnień możemy wykorzystać narzędzia online takie jak [Sucuri LoadTimeTester](https://performance.sucuri.net/), [GTmetrix](https://gtmetrix.com/) czy [bytecheck](https://www.bytecheck.com/).
+  > Według [Understanding Resource Timing - Slow Time to First Byte](https://developers.google.com/web/tools/chrome-devtools/network/understanding-resource-timing#slow_time_to_first_byte) TTFB jest czasem spędzonym na oczekiwaniu na pierwszą odpowiedź, znanym również jako czas do pierwszego bajtu. W tym czasie oprócz czasu spędzonego na oczekiwaniu na dostarczenie odpowiedzi przez serwer jest rejestrowane opóźnienie w obie strony do serwera. W celu sprawdzenia opóźnień możemy wykorzystać narzędzia online takie jak [Site24](https://www.site24x7.com/), [Sucuri LoadTimeTester](https://performance.sucuri.net/), [GTmetrix](https://gtmetrix.com/) czy [bytecheck](https://www.bytecheck.com/).
 
 Zgodnie z powyższym dokumentem, aby rozwiązać problem wysokiego TTFB, najpierw powinniśmy zredukować połączenia sieciowe między klientem a serwerem (a przyczyn może być wiele, np. niezoptymalizowane reguły firewall'a czy problemy z tabelami routingu). W tym wypadku najlepiej jest uruchomić aplikację lokalnie i sprawdzić, czy nadal istnieje duży TTFB. Jeśli tak, aplikacja musi zostać zoptymalizowana. Może to oznaczać optymalizację zapytań do bazy danych, implementację pamięci podręcznej dla określonych części treści lub modyfikację konfiguracji serwera HTTP. Natomiast jeśli TTFB lokalnie jest niskie, problem najprawdopodobniej stanowią sieci między klientem a serwerem.
 
-Najprawdopodobniej najwięcej możliwości do optymalizacji będzie po stronie samej aplikacji. Na przykład, jeśli użytkownik wejdzie na stronę, spowoduje to jej wyrenderowanie, zbudowanie widgetów, pobranie wszystkich informacji o stronie, tj. routingu, listy przekierowań, zawartość strony, itd. Na czas wyrenderowania wpływa kilka głównych czynników:
+Po drugie, wiele artykułów opisuje TTFB jako niezwykle ważny element optymalizacyjny. Nie neguję tego w żaden sposób, jedna spójrz na poniższy wykres pokazujący wszystkie czasy i opóźnienia:
+
+<p align="center">
+  <img src="/assets/img/posts/conn_timers_example.png">
+</p>
+
+Polecam jeszcze bardzo ciekawy artykuł [Stop worrying about Time To First Byte (TTFB)](https://blog.cloudflare.com/ttfb-time-to-first-byte-considered-meaningles/). Pamiętajmy, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi. Drugim parametrem, który nas interesuje, zwłaszcza w kontekście optymalizacji, jest parametr TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/).
+
+Nie zapominajmy o jednym z najważniejszych elementów, tj. samej aplikacji, ponieważ najprawdopodobniej najwięcej możliwości do optymalizacji będzie właśnie po jej stronie. Na przykład, jeśli użytkownik wejdzie na stronę, spowoduje to jej wyrenderowanie, zbudowanie widgetów, pobranie wszystkich informacji o niej, tj. routingu, listy przekierowań, zawartość strony, itd. Na czas wyrenderowania wpływa kilka głównych czynników:
 
 - szybkość interpretacji samego języka
 - budowy danej aplikacji i jej złożoności
@@ -623,7 +631,5 @@ Najprawdopodobniej najwięcej możliwości do optymalizacji będzie po stronie s
 - integracje i oczekiwanie na zewnętrzne serwisy
 - wielkość pobieranych danych z bazy
 - wielkość zasobów
-
-Pamiętajmy, że między klientami a serwerami jest wiele punktów, a każdy z nich ma własne ograniczenia połączeń i może powodować problemy. Najprostszą metodą przetestowania zmniejszenia tego jest umieszczenie aplikacji na innym hoście i sprawdzenie, czy TTFB się poprawi. Drugim parametrem, który nas interesuje, zwłaszcza w kontekście optymalizacji, jest parametr TLS TTFB (ang. _TLS Time to first byte_), który został dokładnie opisany w świetnym artykule [Optimizing NGINX TLS Time To First Byte (TTTFB)](https://www.igvita.com/2013/12/16/optimizing-nginx-tls-time-to-first-byte/).
 
 Nie zapominajmy także o optymalizacji protokołu TCP, w tym regulacji okna przeciążenia, szybkiego otwieranie TCP, obsługi ponownego użycia czy wyborze optymalnego algorytmu kontroli przeciążenia.
