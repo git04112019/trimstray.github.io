@@ -8,7 +8,7 @@ tags: [http, https, ssl, tls, nginx, best-practices, performance, session, cache
 comments: true
 favorite: false
 toc: true
-last_modified_at: 2021-01-18 00:00:00 +0000
+last_modified_at: 2021-02-15 00:00:00 +0000
 ---
 
 Optymalizacja sesji SSL/TLS powinna być jednym z ważniejszych kroków, które należy wykonać, w celu poprawienia ogólnych wrażeń użytkowników podczas korzystania z aplikacji internetowych. Dotyczy to zwłaszcza aplikacji wymagających pełnego uzgadniania protokołu TLS dla każdego połączenia sieciowego, które potrafi wprowadzić zauważalne opóźnienia. To właśnie opóźnienia powodują najwięcej problemów, ponieważ wydłużają czasy odpowiedzi i obniżają ogólną wydajność, a w konsekwencji wpływają na szybkość reakcji aplikacji webowej.

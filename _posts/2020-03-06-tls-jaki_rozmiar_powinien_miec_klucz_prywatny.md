@@ -8,7 +8,7 @@ tags: [https, security, ssl, tls, private-key, rsa, ecc, diffie-hellman]
 comments: true
 favorite: false
 toc: true
-last_modified_at: 2020-07-23 00:00:00 +0000
+last_modified_at: 2021-02-15 00:00:00 +0000
 ---
 
 Kryptografia klucza publicznego, zwana także kryptografią asymetryczną (ang. _Public-Key Cryptography_ lub _Asymmetric Cryptography_) zakłada, że każda transmisja danych używa dwóch różnych kluczy, które występują w parach i są ze sobą w pewien sposób połączone — jeden z nich, klucz publiczny, wykorzystywany jest do szyfrowania wiadomości i weryfikacji podpisów, a drugi, klucz prywatny (o którym będziemy rozmawiać), do deszyfrowania wiadomości i generowania podpisów. Co istotne, ten rodzaj kryptografii pozwala udostępnić jeden z tych kluczy (klucz publiczny) każdemu do użytku, natomiast drugi z nich (klucz prywatny) powinien być maksymalnie chroniony.
@@ -639,7 +639,7 @@ Certyfikaty SSL najczęściej używają kluczy RSA, zaś zalecany rozmiar tych k
 
 Kluczowe moim zdaniem jest zrozumienie, że mocne strony każdego z rozwiązań stają się tak naprawdę bez znaczenia, gdy zostanie osiągnięta strefa, w której „nie da się złamać kluczy przy użyciu istniejącej technologii, tj. mając odpowiedni sprzęt i czas”. Ponadto zawsze powinniśmy mieć świadomość, że w teorii każdy rozmiar jest dozwolony pod warunkiem spełnienia wymaganej siły bezpieczeństwa. Jednak ocena bezpieczeństwa klucza o danym rozmiarze jest złożoną kwestią. Dobrą praktyką jest myślenie o rozmiarach kluczy jako o pewnym marginesie, czyli gdy bezpieczeństwo osiąga pewien próg, wszystko inne staje się nieistotne i niepotrzebne. Dlatego można zadać pytanie inaczej: jaki rozmiar kluczy należy zapewnić, aby nie istniała obecnie możliwość ich złamania? Myślę, że ciekawą odpowiedź znajdziesz w [tym](https://crypto.stackexchange.com/a/1982) komentarzu.
 
-Inna sprawa jest taka, że nie ma sensownego sposobu, w jaki 3xxx-bitowe i 4xxx-bitowe klucze RSA mogłyby być ze sobą porównywane — z punktu widzenia bezpieczeństwa — i w jakikolwiek sposób uznane za bezpieczniejsze względem np. 2048-bitowych kluczy RSA. Każdy z nich jest tak naprawdę niezniszczalny w dającej się przewidzieć przyszłości. Prawda jest też taka, że klucz RSA o długości 1024 bitów jest obecnie wystarczający do wielu celów o średnim poziomie bezpieczeństwa (moim zdaniem nadaje się bardziej na potrzeby własne). Miejmy jednak świadomość, że taki rozmiar nie jest wystarczający do wszystkiego i raczej należy go unikać, aby zachować poufność danych w przyszłości lub zachować je w tajemnicy przed przeciwnikiem gotowym poświęcić odpowiedni czas i pieniądze.
+Inna sprawa jest taka, że nie ma sensownego sposobu, w jaki 3xxx-bitowe i 4xxx-bitowe klucze RSA (Mozilla zaleca takie rozmiary, po więcej informacji zerknij do dokumentu [Mozilla Guidelines - Key Management](https://infosec.mozilla.org/guidelines/key_management.html)) mogłyby być ze sobą porównywane — z punktu widzenia bezpieczeństwa — i w jakikolwiek sposób uznane za bezpieczniejsze względem np. 2048-bitowych kluczy RSA. Każdy z nich jest tak naprawdę niezniszczalny w dającej się przewidzieć przyszłości. Prawda jest też taka, że klucz RSA o długości 1024 bitów jest obecnie wystarczający do wielu celów o średnim poziomie bezpieczeństwa (moim zdaniem nadaje się bardziej na potrzeby własne). Miejmy jednak świadomość, że taki rozmiar nie jest wystarczający do wszystkiego i raczej należy go unikać, aby zachować poufność danych w przyszłości lub zachować je w tajemnicy przed przeciwnikiem gotowym poświęcić odpowiedni czas i pieniądze.
 
 Myślę, że ciekawe wyjaśnienie dotyczące doboru odpowiedniego rozmiaru znajdziesz w artykule [Why some cryptographic keys are much smaller than others](https://blog.cloudflare.com/why-are-some-keys-small/).
 
@@ -727,6 +727,7 @@ Najlepszym obecnie rozwiązaniem problemów szyfrowania RSA jest zastosowanie kr
 - [Key Lengths - Contribution to The Handbook of Information Security]({{ site.url }}/assets/pdfs/NPDF-32.pdf) <sup>[PDF]</sup>
 - [ENISA - Recommended cryptographic measures - Securing personal data]({{ site.url }}/assets/pdfs/Securing _personal_data_Recommended_cryptographic_measures.pdf) <sup>[PDF]</sup>
 - [ENISA - Algorithms, key size and parameters report 2014]({{ site.url }}/assets/pdfs/Algorithms- key_size_and_parameters_report_2014.pdf) <sup>[PDF]</sup>
+- [Mozilla Guidelines - Key Management](https://infosec.mozilla.org/guidelines/key_management.html)
 - [CA/Browser Forum Baseline Requirements](https://cabforum.org/baseline-requirements-documents/)
 - [So you're making an RSA key for an HTTPS certificate. What key size do you use?](https://certsimple.com/blog/measuring-ssl-rsa-keys)
 - [RSA Key Sizes: 2048 or 4096 bits?](https://danielpocock.com/rsa-key-sizes-2048-or-4096-bits/)
