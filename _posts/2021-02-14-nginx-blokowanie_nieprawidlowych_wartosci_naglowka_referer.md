@@ -149,4 +149,4 @@ Pamiętaj, że zdefiniowanie go w konfiguracji, powoduje, że z każdym żądani
 
 Jeżeli pewnego dnia zechcesz stosować dyrektywę `valid_referers`, to zacznie ona działać nieprzewidywalnie. Stanie się tak, ponieważ wykorzystujemy już w konfiguracji zmienną `invalid_referer`, która też przechowuje wyniki ustawione na podstawie dyrektywy `valid_referers`. Moduł `map` będzie miał zawsze wyższy priorytet, więc zawsze przyjmie wartość 0, jeśli zmienna `http_referer` nie będzie przechowywać wartości podanej jako wyrażenie regularne.
 
-Może to rodzić negatywne konsekwencje w wyniku czego dyrektywa `valid_referers` w ogóle nie zadziała, co spowoduje brak możliwości filtrowania nagłówka <span class="h-b">Referer</span>.
+Może to rodzić negatywne konsekwencje w wyniku czego dyrektywa `valid_referers` w ogóle nie zadziała, co spowoduje brak możliwości filtrowania nagłówka <span class="h-b">Referer</span>. Najprostrzym rozwiązaniem jest po prostu zmiana nazwy zmiennej, np. na `invalid_referer_var`.
