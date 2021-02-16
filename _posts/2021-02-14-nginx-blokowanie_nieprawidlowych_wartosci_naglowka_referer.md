@@ -11,7 +11,7 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym zaprezentować dostępny z poziomu serwera NGINX sposób na blokowanie żądań zawierających niepożądany nagłówek <span class="h-b">Referer</span>. Głównie chodzi o to, aby ​​treść ładowana była tylko z autoryzowanych domen, a każde nieautoryzowane żądanie rzucało odpowiedzi, np. z kodem 403.
+W tym wpisie chciałbym zaprezentować sposób na blokowanie żądań zawierających niepożądaną wartość nagłówka <span class="h-b">Referer</span>. Głównie chodzi o to, aby ​​treść ładowana była tylko z autoryzowanych domen, a każde nieautoryzowane żądanie rzucało odpowiedzi, np. z kodem 403. Serwer NGINX pozwala na wykonanie takiego działania za pomocą specjalnego modułu i dyrektywy `valid_referers`.
 
 ## Czym jest referer?
 
