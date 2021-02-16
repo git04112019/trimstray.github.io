@@ -11,13 +11,13 @@ toc: true
 new: true
 ---
 
-W tym wpisie chciałbym przedstawić sposób na blokowanie żądań zawierających niepożądany nagłówek <span class="h-b">Referer</span>. Głównie chodzi o to, aby ​​treść ładowana była tylko z autoryzowanych domen, a każde nieautoryzowane żądanie rzucało odpowiedzi, np. z kodem 403.
+W tym wpisie chciałbym zaprezentować dostępny z poziomu serwera NGINX sposób na blokowanie żądań zawierających niepożądany nagłówek <span class="h-b">Referer</span>. Głównie chodzi o to, aby ​​treść ładowana była tylko z autoryzowanych domen, a każde nieautoryzowane żądanie rzucało odpowiedzi, np. z kodem 403.
 
 ## Czym jest referer?
 
 Nagłówek <span class="h-b">Referer</span> jest opcjonalnym nagłówkiem żądania protokołu HTTP przechowującym adres poprzedniej strony internetowej, która jest połączona z bieżącą witryną lub żądanym zasobem. Został on zdefiniowany w [RFC 2616 Hypertext Transfer Protocol -- HTTP/1.1 - 14.36 Referer](https://tools.ietf.org/html/rfc2616#section-14.36) <sup>IETF</sup> oraz [RFC 7231 - Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content](https://tools.ietf.org/html/rfc7231#section-5.5.2) <sup>IETF</sup>.
 
-Mówiąc prościej, nagłówek ten zawiera adres strony wysyłającej żądanie (wskazuje źródło lub adres URL strony internetowej, z której wykonano żądanie). Na przykład, gdy jedna witryna internetowa łączy się z inną witryną, pierwsza z nich odsyła użytkownika do drugiej. Zazwyczaj ta informacja jest przechwytywana właśnie w polu nagłówku <span class="h-b">Referer</span>. Dzięki temu, po sprawdzeniu strony odsyłającej, nowa strona może zobaczyć, skąd pochodzi żądanie. Widzimy, że umożliwia on serwerom identyfikację, skąd pochodzą żądania (a tym samym klienci odwiedzają strony, na które wchodzą), i mogą używać tych danych na przykład do analiz, rejestrowania lub optymalizacji.
+Mówiąc prościej, nagłówek ten zawiera adres strony wysyłającej żądanie (wskazuje źródło lub adres URL strony internetowej, z której wykonano żądanie). Na przykład, gdy jedna witryna internetowa łączy się z inną witryną, pierwsza z nich odsyła użytkownika do drugiej. Zazwyczaj ta informacja jest przechwytywana właśnie w polu nagłówku <span class="h-b">Referer</span>. Dzięki temu, po sprawdzeniu strony odsyłającej, nowa strona może zobaczyć, skąd pochodzi żądanie. Widzimy, że nagłówek ten umożliwia serwerom identyfikację, skąd pochodzą żądania (a tym samym skąd klienci odwiedzają strony, na które wchodzą), a także rejestrowania lub optymalizacji.
 
 <p align="center">
   <img src="/assets/img/posts/referer_example.png">
@@ -45,17 +45,17 @@ Na przykład, jeśli zezwolisz witrynie <span class="h-b">foo.bar.com</span> na 
 
   > W przypadku elementów takich jak obrazki lub reklamy, punktem odniesienia jest zazwyczaj strona, która wywołuje te elementy.
 
-Należy pamiętać, że sfabrykowanie żądania z odpowiednią wartością pola nagłówka <span class="h-b">Referer</span> jest dość łatwe. Istnieją jednak bardziej problematyczne zastosowania, takie jak śledzenie lub kradzież informacji, a nawet nieumyślne ujawnienie poufnych informacji. Problemy nasilają się, kiedy pełny adres URL zawierający ścieżkę i ciąg zapytania jest wysyłany między źródłami. Może to stanowić niezwykle poważne zagrożenie dla bezpieczeństwa:
+Należy pamiętać, że sfabrykowanie żądania z odpowiednią wartością pola nagłówka <span class="h-b">Referer</span> jest dość łatwe. Istnieją jednak bardziej problematyczne zastosowania, takie jak śledzenie lub kradzież informacji, a nawet nieumyślne ujawnienie poufnych danych. Problemy nasilają się, kiedy pełny adres URL zawierający ścieżkę i ciąg zapytania jest wysyłany między źródłami. Może to stanowić niezwykle poważne zagrożenie dla bezpieczeństwa:
 
 <p align="center">
   <img src="/assets/img/posts/referer_security_issues.png">
 </p>
 
-Zgodnie z [Mozilla - Referer header: privacy and security concerns](https://developer.mozilla.org/en-US/docs/Web/Security/Referer_header:_privacy_and_security_concerns) weźmy na przykład stronę „resetowania hasła” z linkiem do mediów społecznościowych w stopce. Jeśli skorzystano z odsyłacza, w zależności od tego, w jaki sposób udostępniono informacje, witryna mediów społecznościowych może otrzymać adres URL resetowania hasła i nadal może korzystać z udostępnionych informacji, potencjalnie narażając bezpieczeństwo użytkownika. Zgodnie z tą samą logiką obraz przechowywany na stronie trzeciej, ale osadzony na Twojej stronie może spowodować ujawnienie poufnych informacji stronie trzeciej. Nawet jeśli bezpieczeństwo nie jest zagrożone, informacje mogą nie być czymś, co użytkownik chce udostępniać.
+Idąc za dokumentem [Mozilla - Referer header: privacy and security concerns](https://developer.mozilla.org/en-US/docs/Web/Security/Referer_header:_privacy_and_security_concerns) poważne problemy mogą pojawić się w przypadku stron umożliwiających „resetowania hasła” z linkiem do mediów społecznościowych w stopce. Jeśli skorzystano z odsyłacza, w zależności od tego, w jaki sposób udostępniono informacje, witryna mediów społecznościowych może otrzymać adres URL resetowania hasła i nadal może korzystać z udostępnionych informacji, potencjalnie narażając bezpieczeństwo użytkownika. Zgodnie z tą samą logiką obraz przechowywany na stronie trzeciej, ale osadzony na Twojej stronie może spowodować ujawnienie poufnych informacji stronie trzeciej. Nawet jeśli bezpieczeństwo nie jest zagrożone, informacje mogą nie być czymś, co użytkownik chce udostępniać.
 
 ### W jaki sposób poprawić bezpieczeństwo?
 
-Główną ideą powinno być masowe blokowanie żądań, co jesteśmy w stanie wykonać z poziomu serwera NGINX, wykorzystując do tego moduł [ngx_http_referer_module](http://nginx.org/en/docs/http/ngx_http_referer_module.html). Konfiguracja wygląda jak poniżej i moim zdaniem dobrze jest umieścić ją w kontekście `server {...}` tak, aby chronić wszystkie zdefiniowane lokalizacje:
+Główną ideą powinno być masowe blokowanie żądań, co jesteśmy w stanie wykonać z poziomu serwera NGINX, wykorzystując do tego moduł [ngx_http_referer_module](http://nginx.org/en/docs/http/ngx_http_referer_module.html). Konfiguracja wygląda jak poniżej i moim zdaniem dobrze jest umieścić ją w kontekście `server {...}` tak, aby chronić wszystkie zdefiniowane lokalizacje (choć zależy to oczywiście od konkretnego przypadku):
 
 ```nginx
 server_name static.example.com;
@@ -122,7 +122,7 @@ server {
 Po wykonaniu kilku żądań da następujące wyniki:
 
 | <b>REFERER</b> | <b>WYNIK</b> |
-| :---:        | :---:        |
+| :---        | :---:        |
 | <none> | invalid_referer: valid '' |
 | `testing.example.com` | invalid_referer: valid '' |
 | `http://testing.example.com` | invalid_referer: valid '' |
